@@ -236,9 +236,12 @@ export const api = {
   },
 
   // Speech to Text (Whisper)
-  async speechToText(audioBlob) {
+  async speechToText(audioBlob, language = null) {
     const formData = new FormData();
     formData.append("audio", audioBlob, "recording.webm");
+    if (language) {
+      formData.append("language", language);
+    }
     return await request("/speech-to-text", {
       method: "POST",
       body: formData,

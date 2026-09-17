@@ -2394,7 +2394,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
         stream.getTracks().forEach((track) => track.stop());
         setTranscribing(true);
         try {
-          const res = await api.speechToText(audioBlob);
+          const res = await api.speechToText(audioBlob, language);
           if (res.text) {
             setInput(res.text);
             toast("Speech transcribed! Click Send to post query.");

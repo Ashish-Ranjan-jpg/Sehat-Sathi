@@ -681,12 +681,14 @@ Your role:
 @app.post("/speech-to-text")
 async def speech_to_text(
     audio: UploadFile = File(...),
+    language: Optional[str] = Form(None),
     current_user: dict = Depends(auth.get_current_user),
 ):
     """
     Transcribe audio using Groq's free Whisper API.
     Accepts audio/webm, audio/ogg, audio/mp4, etc.
-    Returns the transcribed text.
+    Optionally accepts a 2-letter language code (e.g. 'hi', 'bn', 'ta', 'te')
+    to optimize transcription accuracy for regional spoken queries.
     """
     import os
     import tempfile
@@ -710,11 +712,15 @@ async def speech_to_text(
 
     try:
         with open(tmp_path, "rb") as f:
-            transcription = client.audio.transcriptions.create(
-                model="whisper-large-v3-turbo",
-                file=(f"audio{suffix}", f, content_type or "audio/webm"),
-                response_format="text",
-            )
+            kwargs = {
+                "model": "whisper-large-v3-turbo",
+                "file": (f"audio{suffix}", f, content_type or "audio/webm"),
+                "response_format": "text",
+            }
+            if language and len(language.strip()) == 2:
+                kwargs["language"] = language.strip().lower()
+
+            transcription = client.audio.transcriptions.create(**kwargs)
         return {"text": transcription.strip() if isinstance(transcription, str) else transcription}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Speech transcription error: {str(e)}")
@@ -723,6 +729,7 @@ async def speech_to_text(
             os.remove(tmp_path)
         except Exception:
             pass
+
 
 
 if __name__ == "__main__":
