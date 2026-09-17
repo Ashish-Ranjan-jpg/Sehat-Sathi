@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://sehat-sathi-5ntr.onrender.com";
 const TOKEN_KEY = "sehat_saathi_token";
 
 export function getToken() {
