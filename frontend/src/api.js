@@ -226,5 +226,23 @@ export const api = {
       return res.documents || [];
     },
   },
+
+  // AI Chat
+  async chat(message, documentId = null, language = null) {
+    return await request("/chat", {
+      method: "POST",
+      body: { message, document_id: documentId, language },
+    });
+  },
+
+  // Speech to Text (Whisper)
+  async speechToText(audioBlob) {
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "recording.webm");
+    return await request("/speech-to-text", {
+      method: "POST",
+      body: formData,
+    });
+  },
 };
 

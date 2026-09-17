@@ -45,6 +45,12 @@ import {
   Grid,
   List,
   Phone,
+  Send,
+  Mic,
+  MicOff,
+  Bot,
+  MessageSquare,
+  Loader2,
 } from "lucide-react";
 import { api, getToken, clearToken } from "./api";
 
@@ -2309,6 +2315,231 @@ function TTSPlayer({ extraction }) {
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// AI CHATBOT COMPONENT
+// ---------------------------------------------------------------------------
+
+function AIChatBot({ documentId, initialLanguage = "hi" }) {
+  const [messages, setMessages] = useState([
+    {
+      sender: "bot",
+      text: "Namaste! I am your Sehat Saathi AI Health Assistant. Ask me anything about your medications, dosages, side effects, or general health concerns in English or your preferred regional language.",
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [language, setLanguage] = useState(initialLanguage);
+  const [sending, setSending] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, sending, transcribing]);
+
+  async function handleSend(textToSend) {
+    const query = (textToSend || input).trim();
+    if (!query || sending) return;
+
+    const userMsg = {
+      sender: "user",
+      text: query,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setSending(true);
+
+    try {
+      const res = await api.chat(query, documentId, language);
+      const botMsg = {
+        sender: "bot",
+        text: res.response || "I couldn't process your question right now.",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => [...prev, botMsg]);
+    } catch (err) {
+      toast("Chat error: " + (err.message || "Failed to fetch response"), "error");
+      const errorMsg = {
+        sender: "bot",
+        text: "Sorry, I encountered an error answering your query. Please try again.",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || "audio/webm" });
+        stream.getTracks().forEach((track) => track.stop());
+        setTranscribing(true);
+        try {
+          const res = await api.speechToText(audioBlob);
+          if (res.text) {
+            setInput(res.text);
+            toast("Speech transcribed! Click Send to post query.");
+          } else {
+            toast("Could not recognize speech", "error");
+          }
+        } catch (err) {
+          toast("Speech-to-text error: " + err.message, "error");
+        } finally {
+          setTranscribing(false);
+        }
+      };
+
+      mediaRecorder.start();
+      setRecording(true);
+      toast("Recording started... Speak now");
+    } catch (err) {
+      toast("Microphone access error: " + err.message, "error");
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current && recording) {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+    }
+  }
+
+  function toggleRecording() {
+    if (recording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }
+
+  return (
+    <div className="section chatbot-card" style={{ marginTop: 24 }}>
+      <div className="chatbot-header">
+        <div className="chatbot-title">
+          <div className="bot-avatar-badge">
+            <Bot size={20} color="#fff" />
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Ask Sehat Saathi (AI Medical Assistant)</h3>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--ink-soft)" }}>
+              Ask anything about your document, dosages, or health queries
+            </p>
+          </div>
+        </div>
+        <div className="chatbot-lang-select">
+          <Globe size={14} color="var(--ink-soft)" />
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6 }}
+          >
+            {LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="chatbot-messages">
+        {messages.map((m, idx) => (
+          <div key={idx} className={`chat-bubble-wrap ${m.sender === "user" ? "chat-bubble-user" : "chat-bubble-bot"}`}>
+            {m.sender === "bot" && (
+              <div className="chat-avatar">
+                <Bot size={14} />
+              </div>
+            )}
+            <div className="chat-bubble">
+              <div className="chat-text">{m.text}</div>
+              <div className="chat-meta">
+                <span>{m.time}</span>
+                {m.sender === "bot" && <CopyButton text={m.text} />}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {sending && (
+          <div className="chat-bubble-wrap chat-bubble-bot">
+            <div className="chat-avatar">
+              <Bot size={14} />
+            </div>
+            <div className="chat-bubble chat-bubble-typing">
+              <span className="dot" />
+              <span className="dot" />
+              <span className="dot" />
+            </div>
+          </div>
+        )}
+
+        {transcribing && (
+          <div className="chat-bubble-wrap chat-bubble-user">
+            <div className="chat-bubble chat-bubble-transcribing">
+              <Loader2 size={14} className="spin" /> Transcribing speech audio...
+            </div>
+          </div>
+        )}
+
+        <div ref={chatEndRef} />
+      </div>
+
+      <form
+        className="chatbot-input-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSend();
+        }}
+      >
+        <button
+          type="button"
+          className={`mic-btn ${recording ? "mic-btn--recording" : ""}`}
+          onClick={toggleRecording}
+          disabled={sending || transcribing}
+          title={recording ? "Stop Recording" : "Speak your query (Voice Input)"}
+        >
+          {recording ? <MicOff size={18} /> : <Mic size={18} />}
+        </button>
+
+        <input
+          type="text"
+          placeholder={recording ? "Listening... Speak now!" : "Type or speak your question..."}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          disabled={sending || recording || transcribing}
+        />
+
+        <button
+          type="submit"
+          className="btn btn--primary send-chat-btn"
+          disabled={!input.trim() || sending || recording || transcribing}
+        >
+          {sending ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // DOCUMENT DETAIL SCREEN
 // ---------------------------------------------------------------------------
@@ -2482,6 +2713,9 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
                 </details>
               </div>
             )}
+
+            {/* AI MEDICAL CHATBOT */}
+            <AIChatBot documentId={documentId} initialLanguage={extraction.language || "hi"} />
           </div>
 
           {/* SIDE PANEL (RIGHT) */}

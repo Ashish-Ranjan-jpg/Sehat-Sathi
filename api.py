@@ -33,8 +33,9 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -570,12 +571,161 @@ def admin_delete_patient(patient_id: str):
     return {"status": "deleted", "patient_id": patient_id}
 
 
+
+
 @app.get("/admin/documents", dependencies=[Depends(auth.require_admin())])
 def admin_list_documents():
     """System-wide document list with extraction metadata. Admin only."""
     return {"documents": document_store.list_documents()}
 
 
+# ---------------------------------------------------------------------------
+# AI CHAT ENDPOINT
+# ---------------------------------------------------------------------------
+
+class ChatRequest(BaseModel):
+    message: str
+    document_id: Optional[str] = None
+    language: Optional[str] = None
+
+
+@app.post("/chat")
+async def chat_with_ai(
+    req: ChatRequest,
+    current_user: dict = Depends(auth.get_current_user),
+):
+    """
+    Context-aware AI medical chatbot endpoint.
+    If document_id is provided, the document's extracted medications and
+    simplified explanation are attached as context to the LLM prompt.
+    """
+    from groq import Groq
+    import os
+
+    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+    # Build document context if document_id provided
+    context_block = ""
+    if req.document_id:
+        try:
+            doc = document_store.get_document(req.document_id)
+            if doc:
+                auth.authorize_document_access(doc, current_user)
+                ext = doc.get("extraction") or {}
+                meds = ext.get("medications") or []
+                simplified = ext.get("simplified_explanation") or ""
+                translated = ext.get("translated_explanation") or ""
+                doc_type = ext.get("document_type") or "medical document"
+
+                meds_text = ""
+                if meds:
+                    meds_text = "\n".join(
+                        f"- {m.get('name','Unknown')} | Dosage: {m.get('dosage','')} | "
+                        f"Frequency: {m.get('frequency','')} | Duration: {m.get('duration','')} | "
+                        f"Notes: {m.get('instruction','')}"
+                        for m in meds
+                    )
+
+                context_block = f"""
+The user has uploaded a {doc_type}. Here is what was extracted from it:
+
+MEDICATIONS:
+{meds_text if meds_text else "No structured medications found."}
+
+SIMPLIFIED EXPLANATION (English):
+{simplified or "Not available."}
+
+TRANSLATED EXPLANATION:
+{translated or "Not available."}
+"""
+        except Exception as e:
+            print(f"[chat] Could not load document context: {e}")
+
+    lang_instruction = ""
+    if req.language and req.language.lower() not in ("en", "english"):
+        lang_map = {
+            "hi": "Hindi", "bn": "Bengali", "ta": "Tamil", "te": "Telugu",
+            "mr": "Marathi", "gu": "Gujarati", "kn": "Kannada",
+            "pa": "Punjabi", "ur": "Urdu",
+        }
+        lang_name = lang_map.get(req.language.lower(), req.language)
+        lang_instruction = f"\nIMPORTANT: Respond in {lang_name}. Keep the response clear and in plain language."
+
+    system_prompt = f"""You are Sehat Saathi, a friendly and knowledgeable medical assistant helping patients understand their medical documents and health questions.
+
+Your role:
+- Help users understand their medical documents, medications, dosages, and instructions
+- Answer general health questions in simple, easy-to-understand language
+- Never diagnose or replace professional medical advice — always recommend consulting a doctor for serious concerns
+- Be warm, empathetic, and patient-friendly
+- Keep responses concise and clear (3-5 sentences max unless more detail is needed)
+{context_block}
+{lang_instruction}"""
+
+    try:
+        response = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": req.message},
+            ],
+            temperature=0.7,
+            max_tokens=600,
+        )
+        reply = response.choices[0].message.content.strip()
+        return {"response": reply}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI chat error: {str(e)}")
+
+
+@app.post("/speech-to-text")
+async def speech_to_text(
+    audio: UploadFile = File(...),
+    current_user: dict = Depends(auth.get_current_user),
+):
+    """
+    Transcribe audio using Groq's free Whisper API.
+    Accepts audio/webm, audio/ogg, audio/mp4, etc.
+    Returns the transcribed text.
+    """
+    import os
+    import tempfile
+    from groq import Groq
+
+    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+    audio_bytes = await audio.read()
+    suffix = ".webm"
+    content_type = audio.content_type or ""
+    if "ogg" in content_type:
+        suffix = ".ogg"
+    elif "mp4" in content_type or "m4a" in content_type:
+        suffix = ".mp4"
+    elif "wav" in content_type:
+        suffix = ".wav"
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(audio_bytes)
+        tmp_path = tmp.name
+
+    try:
+        with open(tmp_path, "rb") as f:
+            transcription = client.audio.transcriptions.create(
+                model="whisper-large-v3-turbo",
+                file=(f"audio{suffix}", f, content_type or "audio/webm"),
+                response_format="text",
+            )
+        return {"text": transcription.strip() if isinstance(transcription, str) else transcription}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Speech transcription error: {str(e)}")
+    finally:
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
