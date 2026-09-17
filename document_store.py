@@ -286,6 +286,8 @@ def get_document(document_id):
     return record
 
 
+import storage
+
 def delete_document(document_id):
     """Delete a document, its extraction(s), and its stored file."""
     record = get_document(document_id)
@@ -296,8 +298,8 @@ def delete_document(document_id):
     db_engine.execute("DELETE FROM documents WHERE id = ?", (document_id,))
 
     stored_path = record.get("stored_path")
-    if stored_path and os.path.exists(stored_path):
-        os.remove(stored_path)
+    if stored_path:
+        storage.delete_file(stored_path)
 
     return True
 

@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "name": "Azithromycin",
+    "dosage": "200 mg/mL",
+    "frequency": "Varies by day",
+    "duration": "2 days",
+    "instruction": "Day 1: 15 mL (≈ 3000 mg). Day 2: 7.5 mL (≈ 1500 mg). Dispense 30 mL of 200 mg/mL solution. No refills."
+  }
+]

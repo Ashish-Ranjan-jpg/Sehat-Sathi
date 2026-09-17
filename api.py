@@ -7,7 +7,7 @@ from typing import Optional, Literal
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
@@ -15,6 +15,7 @@ from staged_pipeline import run_pipeline, CONFIG
 import document_store
 import auth_store
 import auth
+import storage
 
 app = FastAPI(
     title="Healthcare Communication Assistant — Processing API",
@@ -285,23 +286,26 @@ async def upload_document(
     # Save the upload with a unique name so concurrent requests never collide
     document_id = uuid.uuid4().hex[:12]
     saved_filename = f"{document_id}{ext}"
-    saved_path = os.path.join(UPLOAD_DIR, saved_filename)
+    file_bytes = await file.read()
 
-    with open(saved_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    stored_path = storage.save_file(
+        filename=saved_filename,
+        content=file_bytes,
+        content_type=file.content_type or "application/octet-stream",
+    )
+    local_pipeline_path = os.path.join(UPLOAD_DIR, saved_filename)
 
     try:
-        result = run_pipeline(saved_path, target_lang=resolved_language)
+        result = run_pipeline(local_pipeline_path, target_lang=resolved_language)
 
-        # Only persist records once processing has actually succeeded — a
-        # half-processed upload isn't a usable record.
+        # Only persist records once processing has actually succeeded
         document_store.create_document(
             document_id=document_id,
             patient_id=resolved_patient_id,
             original_filename=file.filename,
             stored_filename=saved_filename,
-            stored_path=saved_path,
-            content_type=file.content_type,
+            stored_path=stored_path,
+            content_type=file.content_type or "application/octet-stream",
         )
         document_store.create_extraction(
             document_id=document_id,
@@ -319,12 +323,12 @@ async def upload_document(
         return JSONResponse(content=result)
 
     except ValueError as e:
-        _cleanup_failed_upload(saved_path)
+        _cleanup_failed_upload(stored_path)
         raise HTTPException(status_code=502, detail=str(e))
 
     except Exception:
         print(traceback.format_exc())
-        _cleanup_failed_upload(saved_path)
+        _cleanup_failed_upload(stored_path)
         raise HTTPException(
             status_code=500,
             detail="An unexpected error occurred while processing the document."
@@ -332,25 +336,20 @@ async def upload_document(
 
 
 def _cleanup_failed_upload(saved_path):
-    """Remove a saved file when processing failed, so we don't keep orphaned
-    files with no corresponding document record."""
-    if os.path.exists(saved_path):
-        os.remove(saved_path)
+    """Remove a saved file when processing failed."""
+    if saved_path:
+        storage.delete_file(saved_path)
 
 
 @app.get("/documents", dependencies=[Depends(auth.require_role("healthcare_worker"))])
 def list_documents():
-    """Retrieve a list of all uploaded documents (summary view, no result body).
-    Restricted to healthcare workers — this is a system-wide listing across
-    all patients."""
+    """Retrieve a list of all uploaded documents (summary view, no result body)."""
     return {"documents": document_store.list_documents()}
 
 
 @app.get("/documents/{document_id}")
 def get_document(document_id: str, current_user: dict = Depends(auth.get_current_user)):
-    """Retrieve one specific document (metadata + full pipeline result) by its ID.
-    A patient may only fetch their own documents; healthcare workers may
-    fetch any."""
+    """Retrieve one specific document (metadata + full pipeline result) by its ID."""
     record = document_store.get_document(document_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"Document not found: {document_id}")
@@ -367,10 +366,17 @@ def download_document_file(document_id: str, current_user: dict = Depends(auth.g
     auth.authorize_document_access(record, current_user)
 
     stored_path = record["stored_path"]
-    if not os.path.exists(stored_path):
-        raise HTTPException(status_code=404, detail="Stored file is missing on disk.")
-
-    return FileResponse(stored_path, filename=record["original_filename"])
+    try:
+        content = storage.read_file_bytes(stored_path)
+        filename = record.get("original_filename") or "document"
+        content_type = record.get("content_type") or "application/octet-stream"
+        return Response(
+            content=content,
+            media_type=content_type,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Stored file is missing.")
 
 
 @app.delete("/documents/{document_id}")
