@@ -139,33 +139,33 @@ def extract_medical_info_llm(raw_text):
     client = _groq_client()
 
     prompt = f"""This text was extracted via OCR from a medical document
-and may contain OCR errors. Extract every medicine into a JSON array, where
+and may contain OCR errors (e.g. digits misread as letters — "1s mL"
+likely means "15 mL"). Extract every medicine into a JSON array, where
 each object has exactly these fields:
 
 - "name": medicine name
-- "dosage": overall strength/amount
-- "frequency": how often in plain English
-- "duration": total course length if stated, else ""
-- "instruction": extra administration details
+- "dosage": the overall strength/amount (e.g. "200 mg/5 mL"). If OCR
+  looks wrong (like "200 mg/smL"), correct it if you're confident what
+  it should say.
+- "frequency": how often, in plain English (e.g. "twice daily"). If the
+  dose varies by day, put "Varies by day" here.
+- "duration": total length of the course if stated (e.g. "5 days"),
+  else "".
+- "instruction": ANY extra detail that doesn't fit the fields above —
+  including day-by-day dosing schedules, spelled out clearly and
+  correctly (e.g. "Day 1: 15 mL, Day 2: 7.5 mL"), and any
+  administration notes.
 
-If no medicines/prescriptions are found in the text, return an empty JSON array: [].
 Return ONLY the JSON array, no explanation, no markdown formatting.
 
 OCR text:
 \"\"\"{raw_text}\"\"\"
 """
 
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-        )
-    except Exception:
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-20b",
-            messages=[{"role": "user", "content": prompt}],
-        )
-
+    response = client.chat.completions.create(
+        model="openai/gpt-oss-20b",
+        messages=[{"role": "user", "content": prompt}],
+    )
     raw = response.choices[0].message.content.strip()
     medications = _parse_json_response(raw, stage_name="1_extracted_medical_info")
 
@@ -175,7 +175,11 @@ OCR text:
 
 def _parse_json_response(raw_text, stage_name="llm_response"):
     if not raw_text or not raw_text.strip():
-        return []
+        _save(f"DEBUG_{stage_name}_raw.txt", "[EMPTY RESPONSE FROM LLM]")
+        raise ValueError(
+            f"LLM returned an empty response for {stage_name}. "
+            f"Check your API key, rate limits, and Groq's status page."
+        )
 
     cleaned = re.sub(r"```json|```", "", raw_text).strip()
 
@@ -185,11 +189,15 @@ def _parse_json_response(raw_text, stage_name="llm_response"):
             cleaned = match.group(1)
 
     try:
-        res = json.loads(cleaned)
-        return res if isinstance(res, list) else [res]
-    except Exception as e:
-        print(f"[WARNING] Could not parse JSON from LLM response ({stage_name}): {e}. Raw text: {raw_text[:100]}")
-        return []
+        return json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        _save(f"DEBUG_{stage_name}_raw.txt", raw_text)
+        raise ValueError(
+            f"Could not parse JSON from the LLM's response for {stage_name}. "
+            f"The raw response has been saved to "
+            f"'{CONFIG['output_dir']}/DEBUG_{stage_name}_raw.txt' for inspection. "
+            f"Original error: {e}"
+        ) from e
 
 
 
@@ -234,16 +242,10 @@ Text:
 \"\"\"{narrative}\"\"\"
 """
 
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-        )
-    except Exception:
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-20b",
-            messages=[{"role": "user", "content": prompt}],
-        )
+    response = client.chat.completions.create(
+        model="openai/gpt-oss-20b",
+        messages=[{"role": "user", "content": prompt}],
+    )
     simplified = response.choices[0].message.content.strip()
     simplified = _clean_llm_formatting(simplified)
 
@@ -280,18 +282,11 @@ def _translate_with_groq(text, target_lang_code):
         client = _groq_client()
         lang_name = LANG_NAMES.get(target_lang_code, target_lang_code)
         prompt = f"Translate the following medical explanation accurately into {lang_name}. Return ONLY the translated text without markdown formatting, bullet points, or commentary:\n\n{text}"
-        try:
-            res = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3
-            )
-        except Exception:
-            res = client.chat.completions.create(
-                model="openai/gpt-oss-20b",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3
-            )
+        res = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
         translated = res.choices[0].message.content.strip()
         return _clean_llm_formatting(translated)
     except Exception as e:
