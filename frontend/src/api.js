@@ -247,5 +247,16 @@ export const api = {
       body: formData,
     });
   },
+
+  // Emergency & Nearby Healthcare Facilities
+  async getNearbyFacilities(lat, lng, radiusKm = 5.0, facilityType = "all") {
+    const params = new URLSearchParams({
+      lat: String(lat),
+      lng: String(lng),
+      radius_km: String(radiusKm),
+      facility_type: facilityType,
+    });
+    return await request(`/api/nearby-facilities?${params.toString()}`);
+  },
 };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Home,
   User,
@@ -24,6 +25,7 @@ import {
   Pause,
   Square,
   Volume2,
+  VolumeX,
   Copy,
   Pill,
   ClipboardList,
@@ -51,6 +53,16 @@ import {
   Bot,
   MessageSquare,
   Loader2,
+  ShieldAlert,
+  AlertTriangle,
+  PhoneCall,
+  Navigation,
+  MapPin,
+  Crosshair,
+  Share2,
+  HeartPulse,
+  ExternalLink,
+  LifeBuoy,
 } from "lucide-react";
 import { api, getToken, clearToken } from "./api";
 
@@ -1028,17 +1040,20 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
   const patientNav = [
     { key: "dashboard", label: "Your documents", icon: Home },
     { key: "upload", label: "Upload a document", icon: UploadCloud },
+    { key: "emergency", label: "Emergency Aid", icon: ShieldAlert },
     { key: "profile", label: "Your profile", icon: User },
   ];
   const workerNav = [
     { key: "dashboard", label: "Patient Directory", icon: Users },
     { key: "upload", label: "Upload Document", icon: UploadCloud },
+    { key: "emergency", label: "Emergency Aid", icon: ShieldAlert },
   ];
   const adminNav = [
     { key: "overview", label: "Overview", icon: LayoutDashboard },
     { key: "users", label: "Users", icon: UserCog },
     { key: "patients", label: "Patients", icon: Users },
     { key: "documents", label: "Documents", icon: FileText },
+    { key: "emergency", label: "Emergency Aid", icon: ShieldAlert },
   ];
   const items = role === "patient" ? patientNav : role === "healthcare_worker" ? workerNav : adminNav;
 
@@ -2321,6 +2336,7 @@ function TTSPlayer({ extraction }) {
 // ---------------------------------------------------------------------------
 
 function AIChatBot({ documentId, initialLanguage = "hi" }) {
+  const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       sender: "bot",
@@ -2333,17 +2349,98 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
   const [sending, setSending] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const [speakingMsgIdx, setSpeakingMsgIdx] = useState(null);
+  const [voices, setVoices] = useState([]);
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const chatEndRef = useRef(null);
+  const autoSpeakNextRef = useRef(false);
+
+  // Load voices for Web Speech API
+  useEffect(() => {
+    function loadVoices() {
+      const available = window.speechSynthesis.getVoices();
+      if (available.length > 0) {
+        setVoices(available);
+      }
+    }
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => {
+      window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  // Stop TTS if language changes or component unmounts
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+      setSpeakingMsgIdx(null);
+    };
+  }, [language]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, sending, transcribing]);
+    if (isOpen) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, sending, transcribing, isOpen]);
 
-  async function handleSend(textToSend) {
+  function speakMessage(text, idx) {
+    if (!window.speechSynthesis) {
+      toast("Text-to-speech is not supported in this browser", "error");
+      return;
+    }
+
+    if (speakingMsgIdx === idx) {
+      window.speechSynthesis.cancel();
+      setSpeakingMsgIdx(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    // Clean text from markdown symbols for natural narration
+    const cleanText = text
+      .replace(/[*_#`~]/g, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .trim();
+
+    const utter = new SpeechSynthesisUtterance(cleanText);
+
+    // Auto-select best voice matching the current language selection
+    const langCode = getLanguageCode(language);
+    const bcp = LANG_BCP47[langCode] || "en";
+    const available = voices.length > 0 ? voices : window.speechSynthesis.getVoices();
+    const bestVoice =
+      available.find((v) => v.lang.toLowerCase().startsWith(bcp)) ||
+      available.find((v) => v.lang.toLowerCase().startsWith("en")) ||
+      available[0];
+
+    if (bestVoice) {
+      utter.voice = bestVoice;
+      utter.lang = bestVoice.lang;
+    }
+
+    const storedRate = parseFloat(localStorage.getItem("sehat_saathi_speech_rate") || "1.0");
+    utter.rate = isNaN(storedRate) ? 1.0 : storedRate;
+
+    utter.onstart = () => setSpeakingMsgIdx(idx);
+    utter.onend = () => setSpeakingMsgIdx(null);
+    utter.onerror = () => setSpeakingMsgIdx(null);
+
+    setSpeakingMsgIdx(idx);
+    window.speechSynthesis.speak(utter);
+  }
+
+  async function handleSend(textToSend, isVoiceInput = false) {
     const query = (textToSend || input).trim();
     if (!query || sending) return;
+
+    if (isVoiceInput) {
+      autoSpeakNextRef.current = true;
+    }
 
     const userMsg = {
       sender: "user",
@@ -2357,12 +2454,25 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
 
     try {
       const res = await api.chat(query, documentId, language);
+      const responseText = res.response || "I couldn't process your question right now.";
       const botMsg = {
         sender: "bot",
-        text: res.response || "I couldn't process your question right now.",
+        text: responseText,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
-      setMessages((prev) => [...prev, botMsg]);
+
+      setMessages((prev) => {
+        const updated = [...prev, botMsg];
+        const newBotIdx = updated.length - 1;
+
+        if (autoSpeakNextRef.current) {
+          autoSpeakNextRef.current = false;
+          setTimeout(() => {
+            speakMessage(responseText, newBotIdx);
+          }, 150);
+        }
+        return updated;
+      });
     } catch (err) {
       toast("Chat error: " + (err.message || "Failed to fetch response"), "error");
       const errorMsg = {
@@ -2396,8 +2506,8 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
         try {
           const res = await api.speechToText(audioBlob, language);
           if (res.text) {
-            setInput(res.text);
-            toast("Speech transcribed! Click Send to post query.");
+            toast("Speech transcribed! Auto-sending query...");
+            await handleSend(res.text, true);
           } else {
             toast("Could not recognize speech", "error");
           }
@@ -2431,33 +2541,60 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
     }
   }
 
-  return (
-    <div className="section chatbot-card" style={{ marginTop: 24 }}>
+  const chatMarkup = !isOpen ? (
+    <div className="chatbot-floating-launcher">
+      <button
+        type="button"
+        className="chatbot-fab-btn"
+        onClick={() => setIsOpen(true)}
+        title="Ask Sehat Saathi (AI Medical Assistant)"
+      >
+        <div className="chatbot-fab-icon">
+          <Bot size={22} color="#ffffff" />
+        </div>
+        <span className="chatbot-fab-label">Ask Sehat Saathi AI</span>
+        {messages.length > 1 && (
+          <span className="chatbot-fab-badge">{messages.length - 1}</span>
+        )}
+      </button>
+    </div>
+  ) : (
+    <div className="chatbot-floating-window">
       <div className="chatbot-header">
         <div className="chatbot-title">
           <div className="bot-avatar-badge">
             <Bot size={20} color="#fff" />
           </div>
           <div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Ask Sehat Saathi (AI Medical Assistant)</h3>
-            <p style={{ margin: 0, fontSize: 12, color: "var(--ink-soft)" }}>
-              Ask anything about your document, dosages, or health queries
+            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Ask Sehat Saathi</h3>
+            <p style={{ margin: 0, fontSize: 11, color: "var(--ink-soft)" }}>
+              AI Health Assistant
             </p>
           </div>
         </div>
-        <div className="chatbot-lang-select">
-          <Globe size={14} color="var(--ink-soft)" />
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6 }}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="chatbot-lang-select">
+            <Globe size={13} color="var(--ink-soft)" />
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              style={{ fontSize: 11, padding: "2px 4px", borderRadius: 4, background: "transparent", border: "none", color: "var(--ink)", outline: "none" }}
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            className="chatbot-close-btn"
+            onClick={() => setIsOpen(false)}
+            title="Minimize Assistant"
           >
-            {LANGUAGES.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.name}
-              </option>
-            ))}
-          </select>
+            <X size={18} />
+          </button>
         </div>
       </div>
 
@@ -2473,7 +2610,29 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
               <div className="chat-text">{m.text}</div>
               <div className="chat-meta">
                 <span>{m.time}</span>
-                {m.sender === "bot" && <CopyButton text={m.text} />}
+                {m.sender === "bot" && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <button
+                      type="button"
+                      className={`copy-btn ${speakingMsgIdx === idx ? "copy-btn--speaking" : ""}`}
+                      onClick={() => speakMessage(m.text, idx)}
+                      title={speakingMsgIdx === idx ? "Stop Listening" : "Listen to response"}
+                    >
+                      {speakingMsgIdx === idx ? (
+                        <>
+                          <VolumeX size={13} strokeWidth={2} />
+                          <span>Stop</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 size={13} strokeWidth={2} />
+                          <span>Listen</span>
+                        </>
+                      )}
+                    </button>
+                    <CopyButton text={m.text} />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2495,7 +2654,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
         {transcribing && (
           <div className="chat-bubble-wrap chat-bubble-user">
             <div className="chat-bubble chat-bubble-transcribing">
-              <Loader2 size={14} className="spin" /> Transcribing speech audio...
+              <Loader2 size={14} className="spin" /> Transcribing speech audio & auto-sending...
             </div>
           </div>
         )}
@@ -2515,7 +2674,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
           className={`mic-btn ${recording ? "mic-btn--recording" : ""}`}
           onClick={toggleRecording}
           disabled={sending || transcribing}
-          title={recording ? "Stop Recording" : "Speak your query (Voice Input)"}
+          title={recording ? "Stop Recording & Auto Send" : "Speak your query (Voice Input)"}
         >
           {recording ? <MicOff size={18} /> : <Mic size={18} />}
         </button>
@@ -2538,6 +2697,8 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
       </form>
     </div>
   );
+
+  return createPortal(chatMarkup, document.body);
 }
 
 // ---------------------------------------------------------------------------
@@ -2660,51 +2821,6 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
               )}
             </div>
 
-            <div className="section">
-              <h2>Extracted Medications ({medications.length})</h2>
-              {medications.length === 0 ? (
-                <p style={{ color: "var(--ink-soft)" }}>No structured medications were detected in this document.</p>
-              ) : (
-                <>
-                  <div className="med-cards">
-                    {paginatedMedications.map((m, idx) => (
-                      <div key={idx} className="med-card">
-                        <div className="med-card__name">{m.name || "Unnamed Medicine"}</div>
-                        <div className="med-chip-row">
-                          {m.dosage && (
-                            <span className="med-chip">
-                              <span className="med-chip__label">Dosage:</span> {m.dosage}
-                            </span>
-                          )}
-                          {m.frequency && (
-                            <span className="med-chip">
-                              <span className="med-chip__label">Frequency:</span> {m.frequency}
-                            </span>
-                          )}
-                          {m.duration && (
-                            <span className="med-chip">
-                              <span className="med-chip__label">Duration:</span> {m.duration}
-                            </span>
-                          )}
-                        </div>
-                        {m.instruction && (
-                          <div className="med-card__instruction">
-                            <strong>Notes: </strong>{m.instruction}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <Pagination
-                    currentPage={medPage}
-                    totalItems={medications.length}
-                    pageSize={5}
-                    onPageChange={setMedPage}
-                  />
-                </>
-              )}
-            </div>
-
             {extraction.raw_text && (
               <div className="section" style={{ border: "none" }}>
                 <details className="raw-text">
@@ -2714,7 +2830,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
               </div>
             )}
 
-            {/* AI MEDICAL CHATBOT */}
+            {/* AI MEDICAL CHATBOT WIDGET */}
             <AIChatBot documentId={documentId} initialLanguage={extraction.language || "hi"} />
           </div>
 
@@ -2759,43 +2875,6 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
                 <button className="btn btn--secondary" onClick={handleDelete} style={{ width: "100%", justifyContent: "center", color: "var(--brick)", borderColor: "rgba(192, 57, 43, 0.3)" }}>
                   <Trash2 size={15} /> Delete document
                 </button>
-              </div>
-            </div>
-
-            {/* Extracted Prescribed Medicines Summary */}
-            {medications.length > 0 && (
-              <div className="side-card">
-                <div className="side-card__header">
-                  <Pill size={18} color="var(--teal)" />
-                  <h3 className="side-card__title">Meds List ({medications.length})</h3>
-                </div>
-                <div className="med-widget-list">
-                  {medications.slice(0, 6).map((m, idx) => (
-                    <div key={idx} className="med-widget-item">
-                      <span className="med-widget-name">{m.name || "Medicine"}</span>
-                      <span className="med-widget-sub">{m.dosage || "As prescribed"}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Timing Guide */}
-            <div className="side-card">
-              <div className="side-card__header">
-                <Sparkles size={18} color="var(--teal)" />
-                <h3 className="side-card__title">Prescription Timings</h3>
-              </div>
-              <p className="side-card__text" style={{ fontSize: "12.5px", marginBottom: 12 }}>
-                Quick guide to medicine symbols:
-              </p>
-              <div className="cheat-sheet-grid">
-                <div className="cheat-sheet-item"><strong>1-0-1</strong> Morning & Night</div>
-                <div className="cheat-sheet-item"><strong>1-1-1</strong> 3 times daily</div>
-                <div className="cheat-sheet-item"><strong>OD</strong> Once daily</div>
-                <div className="cheat-sheet-item"><strong>BD</strong> Twice daily</div>
-                <div className="cheat-sheet-item"><strong>AC</strong> Before meals</div>
-                <div className="cheat-sheet-item"><strong>PC</strong> After meals</div>
               </div>
             </div>
           </div>
@@ -3307,6 +3386,782 @@ Preferred Language: ${preferredLang || 'Hindi'}
       </div>
     </Shell>
   );
+}
+
+// ---------------------------------------------------------------------------
+// EMERGENCY INFORMATION ASSISTANCE SCREEN
+// ---------------------------------------------------------------------------
+
+const FIRST_AID_GUIDES = [
+  {
+    id: "cpr",
+    title: "CPR (Cardiopulmonary Resuscitation)",
+    category: "cardiac",
+    severity: "CRITICAL",
+    summary: "For unresponsive victim not breathing or only gasping.",
+    steps: [
+      "Check safety & tap shoulders asking loudly 'Are you OK?'",
+      "Call National Emergency 112 / 108 immediately or ask someone nearby to call.",
+      "Place heel of one hand in center of chest, interlock other hand on top.",
+      "Push hard and fast: 100 to 120 compressions/min at 2 inches (5 cm) depth.",
+      "Allow chest to recoil fully between compressions. Continue until help arrives."
+    ],
+    dos: ["Push hard and fast in center of chest", "Keep arms straight and shoulders over hands"],
+    donts: ["Do not stop compressions unless victim moves or help takes over", "Do not press on ribs or lower abdomen"]
+  },
+  {
+    id: "choking",
+    title: "Choking (Heimlich Maneuver)",
+    category: "cardiac",
+    severity: "CRITICAL",
+    summary: "For victim unable to speak, cough, or breathe.",
+    steps: [
+      "Stand behind the person, wrap your arms around their waist.",
+      "Make a fist with one hand and place thumb side against abdomen just above navel.",
+      "Grasp fist with other hand and perform quick, upward abdominal thrusts.",
+      "Repeat thrusts until object is expelled or person becomes unconscious.",
+      "If unconscious, lower to ground and begin CPR compressions."
+    ],
+    dos: ["Encourage coughing if person can cough forcefully", "Perform quick upward abdominal thrusts"],
+    donts: ["Do not perform blind finger sweeps in mouth", "Do not slap back if person is upright and coughing"]
+  },
+  {
+    id: "bleeding",
+    title: "Severe Bleeding & Wound Pressure",
+    category: "trauma",
+    severity: "HIGH",
+    summary: "Control rapid arterial or heavy venous blood loss.",
+    steps: [
+      "Apply firm, continuous direct pressure with sterile cloth or clean hands.",
+      "Keep pressure applied for at least 10 minutes without lifting cloth to check.",
+      "If blood soaks through, add more cloth on top; DO NOT remove original cloth.",
+      "Elevate wounded limb above heart level if no bone fracture is suspected.",
+      "Seek urgent medical help at nearest trauma center."
+    ],
+    dos: ["Apply firm direct pressure continuously", "Elevate injured limb if safe"],
+    donts: ["Do not remove embedded objects from wound", "Do not remove soaked bandages"]
+  },
+  {
+    id: "burns",
+    title: "Burns & Thermal Scalds",
+    category: "trauma",
+    severity: "HIGH",
+    summary: "Cool burn area and prevent skin infection.",
+    steps: [
+      "Cool burn immediately under cool running tap water for 10-20 minutes.",
+      "Remove tight clothing, rings, or watches near burn before swelling starts.",
+      "Cover burn loosely with clean non-stick sterile gauze or plastic wrap.",
+      "Keep victim warm and seek medical care for large, facial, or blistering burns."
+    ],
+    dos: ["Use cool running water immediately", "Cover loosely with clean non-stick wrap"],
+    donts: ["Never apply ice, butter, oil, or toothpaste to burn", "Do not pop blisters"]
+  },
+  {
+    id: "fracture",
+    title: "Bone Fractures & Limb Trauma",
+    category: "trauma",
+    severity: "MODERATE",
+    summary: "Immobilize limb and minimize pain/swelling.",
+    steps: [
+      "Keep injured limb completely still in position found.",
+      "Support limb using padded splint, rolled newspaper, or sling.",
+      "Apply cold ice pack wrapped in cloth for 15 minutes to reduce swelling.",
+      "Check for normal skin color, temperature, and pulse beyond fracture site."
+    ],
+    dos: ["Immobilize joint above and below fracture", "Apply cold pack wrapped in towel"],
+    donts: ["Do not attempt to straighten bent or deformed bones", "Do not push protruding bones back in"]
+  },
+  {
+    id: "stroke",
+    title: "Stroke Emergency (F.A.S.T Protocol)",
+    category: "crises",
+    severity: "CRITICAL",
+    summary: "Recognize brain stroke symptoms immediately.",
+    steps: [
+      "F - Face Drooping: Ask person to smile. Does one side of face droop?",
+      "A - Arm Weakness: Ask person to raise both arms. Does one arm drift downward?",
+      "S - Speech Difficulty: Ask person to repeat simple phrase. Is speech slurred or strange?",
+      "T - Time to Call 112/108: If any of these signs appear, call emergency ambulance immediately!",
+      "Note exact time when first symptoms started and keep patient resting still."
+    ],
+    dos: ["Call 108/112 ambulance instantly", "Note exact time of symptom onset"],
+    donts: ["Do not give food, water, or aspirin", "Do not allow patient to sleep or drive"]
+  },
+  {
+    id: "heartattack",
+    title: "Heart Attack Immediate Action",
+    category: "cardiac",
+    severity: "CRITICAL",
+    summary: "Chest pressure, arm pain, shortness of breath, cold sweat.",
+    steps: [
+      "Call emergency ambulance 108 / 112 immediately.",
+      "Have patient sit down in comfortable half-sitting position on floor.",
+      "Loosen tight clothing around neck and chest.",
+      "If patient has prescribed nitroglycerin, help them take it. If not allergic, chew 300mg aspirin.",
+      "Monitor pulse and breathing closely. Prepare to perform CPR if patient stops breathing."
+    ],
+    dos: ["Keep patient calm and seated", "Call emergency ambulance right away"],
+    donts: ["Do not let patient walk or exert themselves", "Do not leave patient alone"]
+  },
+  {
+    id: "seizure",
+    title: "Seizures & Fits Response",
+    category: "crises",
+    severity: "HIGH",
+    summary: "Protect patient from self-injury during convulsions.",
+    steps: [
+      "Ease patient onto floor and clear surrounding area of sharp objects.",
+      "Place soft cushion or folded jacket under patient's head.",
+      "Turn patient gently onto one side (recovery position) to keep airway clear.",
+      "Time the duration of seizure. Call 108/112 if seizure lasts longer than 5 minutes.",
+      "Stay with patient until fully conscious and oriented."
+    ],
+    dos: ["Turn patient on side", "Time length of seizure"],
+    donts: ["Do not put anything inside patient's mouth", "Do not hold or restrain patient's movements"]
+  },
+  {
+    id: "snakebite",
+    title: "Snake Bites & Envenomation",
+    category: "environmental",
+    severity: "CRITICAL",
+    summary: "Immobilize bitten limb and rush to hospital for antivenom.",
+    steps: [
+      "Keep patient calm, reassuring them that most bites are treatable.",
+      "Immobilize bitten limb below heart level. Remove rings, footwear, or tight bands.",
+      "Clean bite site gently with soap and water or dry wipe.",
+      "Transport immediately to hospital with Anti-Snake Venom (ASV) capacity.",
+      "Remember snake appearance (color/pattern) from distance if safe to report."
+    ],
+    dos: ["Immobilize limb with splint", "Rush to hospital immediately"],
+    donts: ["Do NOT cut, suck, or apply tourniquet/ice to bite", "Do not attempt to catch snake"]
+  },
+  {
+    id: "heatstroke",
+    title: "Heatstroke & Hyperthermia",
+    category: "environmental",
+    severity: "HIGH",
+    summary: "High body temp (>40°C), confusion, dry/flushed skin.",
+    steps: [
+      "Move victim to cool, shaded or air-conditioned space immediately.",
+      "Remove heavy outer clothing.",
+      "Apply cold wet cloths, ice packs to armpits, neck, groin, and back.",
+      "Fan victim vigorously while spraying cool water.",
+      "Sip cool water or ORS rehydration solution ONLY if fully conscious."
+    ],
+    dos: ["Cool body rapidly with wet towels/ice", "Move to shade/AC"],
+    donts: ["Do not force fluids if confused or unconscious", "Do not give alcoholic beverages"]
+  }
+];
+
+const NATIONAL_HELPLINES = [
+  { number: "112", label: "National Emergency Number", subtitle: "All Emergencies (Police, Fire, Ambulance)" },
+  { number: "108", label: "Emergency Medical & Ambulance", subtitle: "24/7 Disaster & Medical Response" },
+  { number: "102", label: "Free Govt Health Ambulance", subtitle: "Maternal & Emergency Transport" },
+  { number: "100", label: "Police Control Room", subtitle: "Crime, Safety & Emergency Help" },
+  { number: "101", label: "Fire & Rescue Services", subtitle: "Fire Hazards & Structural Rescue" },
+  { number: "14477", label: "Tele-MANAS Mental Health", subtitle: "24/7 Psychological Support Helpline" },
+  { number: "1091", label: "Women Helpline", subtitle: "Women Safety & Emergency Assistance" },
+  { number: "1098", label: "Child Emergency Helpline", subtitle: "Child Protection & Care Assistance" },
+];
+
+function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
+  const [activeTab, setActiveTab] = useState("facilities"); // "facilities", "firstaid", "helplines", "ambulance"
+  const [gpsStatus, setGpsStatus] = useState("idle"); // "idle" | "detecting" | "success" | "denied"
+  const [userCoords, setUserCoords] = useState(null);
+  const [facilities, setFacilities] = useState([]);
+  const [loadingFacilities, setLoadingFacilities] = useState(false);
+  const [radiusKm, setRadiusKm] = useState(5.0);
+  const [facilityType, setFacilityType] = useState("all");
+  const [manualCity, setManualCity] = useState("");
+
+  const [firstAidCategory, setFirstAidCategory] = useState("all");
+  const [firstAidQuery, setFirstAidQuery] = useState("");
+  const [expandedGuideId, setExpandedGuideId] = useState("cpr");
+
+  const [patientCondition, setPatientCondition] = useState("Breathing Difficulty / Asphyxia");
+  const [dispatchPhone, setDispatchPhone] = useState(patientProfile?.phone_number || patientProfile?.emergency_contact || "");
+  const [dispatchLandmark, setDispatchLandmark] = useState("");
+
+  // Detect GPS on initial mount
+  useEffect(() => {
+    handleDetectGPS();
+  }, []);
+
+  function handleDetectGPS() {
+    if (!navigator.geolocation) {
+      toast("Geolocation is not supported by your browser.", "error");
+      setGpsStatus("denied");
+      fetchFacilities(28.6139, 77.2090, radiusKm, facilityType);
+      return;
+    }
+    setGpsStatus("detecting");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setUserCoords({ lat, lng });
+        setGpsStatus("success");
+        fetchFacilities(lat, lng, radiusKm, facilityType);
+      },
+      () => {
+        toast("GPS access unavailable. Using central regional locator.", "error");
+        setGpsStatus("denied");
+        const defaultLat = 28.6139;
+        const defaultLng = 77.2090;
+        setUserCoords({ lat: defaultLat, lng: defaultLng });
+        fetchFacilities(defaultLat, defaultLng, radiusKm, facilityType);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  }
+
+  async function fetchFacilities(lat, lng, rKm, fType) {
+    setLoadingFacilities(true);
+    try {
+      const data = await api.getNearbyFacilities(lat, lng, rKm, fType);
+      setFacilities(data.facilities || []);
+    } catch (err) {
+      toast("Failed to load facilities: " + err.message, "error");
+    } finally {
+      setLoadingFacilities(false);
+    }
+  }
+
+  function handleRefetchWithParams(rKm, fType) {
+    setRadiusKm(rKm);
+    setFacilityType(fType);
+    const lat = userCoords?.lat || 28.6139;
+    const lng = userCoords?.lng || 77.2090;
+    fetchFacilities(lat, lng, rKm, fType);
+  }
+
+  function handleManualSearch(e) {
+    e.preventDefault();
+    if (!manualCity.trim()) return;
+    toast(`Searching healthcare facilities in "${manualCity}"...`);
+    const lat = userCoords?.lat || 28.6139;
+    const lng = userCoords?.lng || 77.2090;
+    fetchFacilities(lat, lng, radiusKm, facilityType);
+  }
+
+  function getEmergencyLocationText() {
+    if (userCoords) {
+      return `EMERGENCY MEDICAL AID NEEDED! My GPS Location coordinates: https://www.google.com/maps?q=${userCoords.lat},${userCoords.lng}`;
+    }
+    return `EMERGENCY MEDICAL AID NEEDED! Location: ${manualCity || "Current Location"}`;
+  }
+
+  function handleShareWhatsApp() {
+    const text = encodeURIComponent(getEmergencyLocationText());
+    window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank");
+  }
+
+  async function handleCopyLocationLink() {
+    try {
+      await navigator.clipboard.writeText(getEmergencyLocationText());
+      toast("Emergency location link copied to clipboard!");
+    } catch (err) {
+      toast("Failed to copy link: " + err.message, "error");
+    }
+  }
+
+  function handleDispatchSubmit(e) {
+    e.preventDefault();
+    showConfirm({
+      title: "Confirm Emergency Ambulance Request?",
+      message: `Requesting 108 Emergency Ambulance dispatch for condition: "${patientCondition}". Ensure your location is clear.`,
+      confirmLabel: "Call 108 Ambulance Now",
+      onConfirm: () => {
+        window.location.href = "tel:108";
+        toast("Initiating 108 Ambulance Dispatch Call...", "success");
+      },
+    });
+  }
+
+  const filteredGuides = FIRST_AID_GUIDES.filter((g) => {
+    const matchCat = firstAidCategory === "all" || g.category === firstAidCategory;
+    const matchQ =
+      !firstAidQuery.trim() ||
+      g.title.toLowerCase().includes(firstAidQuery.toLowerCase()) ||
+      g.summary.toLowerCase().includes(firstAidQuery.toLowerCase());
+    return matchCat && matchQ;
+  });
+
+  return (
+    <Shell
+      role={role}
+      active="emergency"
+      onNav={onNav}
+      onLogout={onLogout}
+      title="Emergency Assistance & Location Services"
+      subtitle="24/7 First Aid Guides, Location-Based Hospital Search, Emergency Contacts & Ambulance Broadcast"
+    >
+      {/* Top Banner Alert Bar */}
+      <div className="emergency-alert-banner">
+        <div className="emergency-banner-info">
+          <div className="emergency-icon-ring">
+            <ShieldAlert size={28} color="#ffffff" />
+          </div>
+          <div>
+            <h2 className="emergency-banner-title">Medical Emergency Assistance</h2>
+            <p className="emergency-banner-sub">
+              If someone is unresponsive or in critical danger, call National Emergency <strong>112</strong> or Medical Helpline <strong>108</strong> immediately.
+            </p>
+          </div>
+        </div>
+
+        <div className="emergency-quick-actions">
+          <a href="tel:112" className="btn btn--emergency-dial">
+            <PhoneCall size={16} /> Call 112 (National)
+          </a>
+          <a href="tel:108" className="btn btn--ambulance-dial">
+            <HeartPulse size={16} /> Call 108 (Ambulance)
+          </a>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="emergency-tab-nav" style={{ marginTop: 20 }}>
+        <button
+          className={`emergency-tab-btn ${activeTab === "facilities" ? "active" : ""}`}
+          onClick={() => setActiveTab("facilities")}
+        >
+          <MapPin size={16} /> Nearby Healthcare Facilities
+        </button>
+        <button
+          className={`emergency-tab-btn ${activeTab === "firstaid" ? "active" : ""}`}
+          onClick={() => setActiveTab("firstaid")}
+        >
+          <HeartPulse size={16} /> First Aid Guidance
+        </button>
+        <button
+          className={`emergency-tab-btn ${activeTab === "helplines" ? "active" : ""}`}
+          onClick={() => setActiveTab("helplines")}
+        >
+          <PhoneCall size={16} /> Emergency Contacts
+        </button>
+        <button
+          className={`emergency-tab-btn ${activeTab === "ambulance" ? "active" : ""}`}
+          onClick={() => setActiveTab("ambulance")}
+        >
+          <Navigation size={16} /> Ambulance & Location Broadcast
+        </button>
+      </div>
+
+      {/* TAB 1: NEARBY HEALTHCARE FACILITIES */}
+      {activeTab === "facilities" && (
+        <div className="section" style={{ marginTop: 20 }}>
+          <div className="facilities-header-row">
+            <div>
+              <h2 style={{ margin: 0, fontSize: 18 }}>Nearby Hospitals, Clinics & Pharmacies</h2>
+              <p style={{ margin: "4px 0 0", color: "var(--ink-soft)", fontSize: 13 }}>
+                Locate real-time healthcare facilities with 24/7 emergency care and GPS distance
+              </p>
+            </div>
+
+            <button className="btn btn--secondary" onClick={handleDetectGPS} disabled={gpsStatus === "detecting"}>
+              {gpsStatus === "detecting" ? (
+                <>
+                  <Loader2 size={16} className="spin" /> Detecting GPS...
+                </>
+              ) : (
+                <>
+                  <Crosshair size={16} color="var(--teal)" /> Update My Location
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Location Controls & Filters */}
+          <div className="facility-filter-bar">
+            <div className="filter-group">
+              <span className="filter-label">Facility Type:</span>
+              <div className="chip-buttons">
+                {["all", "hospital", "pharmacy", "clinic"].map((t) => (
+                  <button
+                    key={t}
+                    className={`chip-btn ${facilityType === t ? "active" : ""}`}
+                    onClick={() => handleRefetchWithParams(radiusKm, t)}
+                  >
+                    {t === "all" ? "All Facilities" : t.charAt(0).toUpperCase() + t.slice(1) + "s"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="filter-group">
+              <span className="filter-label">Search Radius:</span>
+              <div className="chip-buttons">
+                {[2, 5, 10, 25].map((r) => (
+                  <button
+                    key={r}
+                    className={`chip-btn ${radiusKm === r ? "active" : ""}`}
+                    onClick={() => handleRefetchWithParams(r, facilityType)}
+                  >
+                    {r} km
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <form onSubmit={handleManualSearch} className="manual-location-form">
+              <input
+                type="text"
+                placeholder="Or enter city / area name..."
+                value={manualCity}
+                onChange={(e) => setManualCity(e.target.value)}
+              />
+              <button type="submit" className="btn btn--secondary" style={{ padding: "6px 12px", fontSize: 12 }}>
+                Search
+              </button>
+            </form>
+          </div>
+
+          {/* Location Status Info Bar */}
+          <div className="gps-status-badge">
+            <MapPin size={14} color="var(--teal)" />
+            <span>
+              {userCoords
+                ? `GPS Active: Latitude ${roundCoords(userCoords.lat)}, Longitude ${roundCoords(userCoords.lng)}`
+                : "Location detection active"}
+            </span>
+          </div>
+
+          {/* Facility List */}
+          {loadingFacilities ? (
+            <div className="loading-box" style={{ padding: 40 }}>
+              <div className="pulse-ring" />
+              <p style={{ color: "var(--ink-soft)", margin: 0 }}>Searching nearby healthcare facilities...</p>
+            </div>
+          ) : facilities.length === 0 ? (
+            <div className="empty-state">
+              <AlertTriangle size={32} color="var(--ink-soft)" />
+              <p>No facilities found in this range. Try increasing the search radius.</p>
+            </div>
+          ) : (
+            <div className="facilities-grid">
+              {facilities.map((f) => (
+                <div key={f.id} className="facility-card">
+                  <div className="facility-card__header">
+                    <div>
+                      <h3 className="facility-name">{f.name}</h3>
+                      <div className="facility-tags">
+                        <span className={`badge ${f.type === "Hospital" ? "badge--teal" : "badge--gold"}`}>
+                          {f.type}
+                        </span>
+                        {f.emergency_24x7 && (
+                          <span className="badge badge--brick" style={{ fontSize: 11 }}>
+                            24/7 Emergency
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="facility-dist-pill">
+                      <strong>{f.distance_km} km</strong> away
+                    </div>
+                  </div>
+
+                  <p className="facility-address">
+                    <MapPin size={13} style={{ flexShrink: 0, marginTop: 2 }} /> {f.address}
+                  </p>
+
+                  <div className="facility-actions">
+                    {f.phone && (
+                      <a href={`tel:${f.phone}`} className="btn btn--secondary btn--sm">
+                        <PhoneCall size={13} /> Call: {f.phone}
+                      </a>
+                    )}
+                    <a
+                      href={f.maps_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn--primary btn--sm"
+                    >
+                      <Navigation size={13} /> Directions & Maps <ExternalLink size={11} />
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: FIRST AID GUIDANCE */}
+      {activeTab === "firstaid" && (
+        <div className="section" style={{ marginTop: 20 }}>
+          <div className="first-aid-header-row">
+            <div>
+              <h2 style={{ margin: 0, fontSize: 18 }}>Step-by-Step First Aid Guidance</h2>
+              <p style={{ margin: "4px 0 0", color: "var(--ink-soft)", fontSize: 13 }}>
+                Essential medical response procedures for life-threatening emergencies and injuries
+              </p>
+            </div>
+
+            <div className="search-box" style={{ width: 260 }}>
+              <Search size={15} color="var(--ink-soft)" />
+              <input
+                type="text"
+                placeholder="Search first aid guide..."
+                value={firstAidQuery}
+                onChange={(e) => setFirstAidQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="chip-buttons" style={{ marginTop: 16, marginBottom: 20 }}>
+            {[
+              { id: "all", label: "All Emergency Guides" },
+              { id: "cardiac", label: "Cardiac & Resuscitation" },
+              { id: "trauma", label: "Bleeding & Trauma" },
+              { id: "crises", label: "Stroke & Seizures" },
+              { id: "environmental", label: "Environmental & Envenomation" },
+            ].map((c) => (
+              <button
+                key={c.id}
+                className={`chip-btn ${firstAidCategory === c.id ? "active" : ""}`}
+                onClick={() => setFirstAidCategory(c.id)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Guides Grid / Accordion */}
+          <div className="first-aid-grid">
+            {filteredGuides.map((guide) => {
+              const isExpanded = expandedGuideId === guide.id;
+              return (
+                <div
+                  key={guide.id}
+                  className={`first-aid-card ${isExpanded ? "first-aid-card--expanded" : ""}`}
+                >
+                  <div
+                    className="first-aid-card__header"
+                    onClick={() => setExpandedGuideId(isExpanded ? null : guide.id)}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div className={`severity-indicator severity--${guide.severity.toLowerCase()}`}>
+                        <ShieldAlert size={18} />
+                      </div>
+                      <div>
+                        <h3 className="guide-title">{guide.title}</h3>
+                        <p className="guide-summary">{guide.summary}</p>
+                      </div>
+                    </div>
+                    <span className={`badge badge--${guide.severity === "CRITICAL" ? "brick" : "gold"}`}>
+                      {guide.severity}
+                    </span>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="first-aid-card__body fade-in">
+                      <h4 className="guide-subtitle">Step-by-Step Action Plan:</h4>
+                      <ol className="guide-steps-list">
+                        {guide.steps.map((step, idx) => (
+                          <li key={idx}>
+                            <span className="step-num">{idx + 1}</span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+
+                      <div className="guide-dos-donts">
+                        <div className="dos-box">
+                          <h5 style={{ color: "#15803d", margin: "0 0 8px" }}>✔ What to DO</h5>
+                          <ul>
+                            {guide.dos.map((d, i) => (
+                              <li key={i}>{d}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div className="donts-box">
+                          <h5 style={{ color: "#b91c1c", margin: "0 0 8px" }}>✖ What NOT to do</h5>
+                          <ul>
+                            {guide.donts.map((d, i) => (
+                              <li key={i}>{d}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      <div className="guide-footer-call">
+                        <span>Need immediate ambulance response for this patient?</span>
+                        <a href="tel:108" className="btn btn--emergency-dial btn--sm">
+                          <PhoneCall size={13} /> Call 108 Ambulance
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: EMERGENCY CONTACTS */}
+      {activeTab === "helplines" && (
+        <div className="section" style={{ marginTop: 20 }}>
+          <h2>National Emergency Helplines (India)</h2>
+          <p style={{ color: "var(--ink-soft)", fontSize: 13, marginBottom: 16 }}>
+            Free, toll-free 24/7 national emergency telephone assistance lines
+          </p>
+
+          <div className="helpline-grid">
+            {NATIONAL_HELPLINES.map((h) => (
+              <div key={h.number} className="helpline-card">
+                <div className="helpline-card__content">
+                  <div className="helpline-number-badge">{h.number}</div>
+                  <div>
+                    <h3 className="helpline-title">{h.label}</h3>
+                    <p className="helpline-sub">{h.subtitle}</p>
+                  </div>
+                </div>
+                <a href={`tel:${h.number}`} className="btn btn--emergency-dial">
+                  <PhoneCall size={15} /> Call {h.number}
+                </a>
+              </div>
+            ))}
+          </div>
+
+          {/* Personal Emergency Contact from Profile */}
+          <div className="section" style={{ marginTop: 24, background: "rgba(13, 148, 136, 0.05)", borderColor: "var(--teal)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+              <User size={20} color="var(--teal)" />
+              <h3 style={{ margin: 0, fontSize: 16 }}>Your Personal Emergency Contact</h3>
+            </div>
+            {patientProfile?.emergency_contact ? (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>{patientProfile.emergency_contact}</p>
+                  <p style={{ margin: "2px 0 0", color: "var(--ink-soft)", fontSize: 12 }}>Saved in your Sehat Saathi profile</p>
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <a href={`tel:${patientProfile.emergency_contact}`} className="btn btn--primary">
+                    <PhoneCall size={15} /> Call Saved Contact
+                  </a>
+                  <button className="btn btn--secondary" onClick={handleShareWhatsApp}>
+                    <Share2 size={15} /> SMS Location
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <p style={{ margin: 0, color: "var(--ink-soft)" }}>No personal emergency contact added to profile yet.</p>
+                <button className="btn btn--secondary" onClick={() => onNav("profile")}>
+                  + Add in Profile
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: AMBULANCE CONTACT & LOCATION BROADCAST */}
+      {activeTab === "ambulance" && (
+        <div className="section" style={{ marginTop: 20 }}>
+          <div className="doc-detail-layout-grid">
+            {/* Left Column: Instant Location Broadcast */}
+            <div className="doc-detail-main">
+              <h2>Instant Location Broadcast to Responders</h2>
+              <p style={{ color: "var(--ink-soft)", fontSize: 13, marginBottom: 16 }}>
+                Share your exact GPS coordinates and map directions instantly with family or ambulance drivers.
+              </p>
+
+              <div className="location-broadcast-card">
+                <div className="broadcast-preview-box">
+                  <MapPin size={18} color="var(--brick)" />
+                  <p className="broadcast-text">{getEmergencyLocationText()}</p>
+                </div>
+
+                <div className="broadcast-actions">
+                  <button className="btn btn--whatsapp-share" onClick={handleShareWhatsApp}>
+                    <Share2 size={16} /> Share via WhatsApp
+                  </button>
+                  <button className="btn btn--secondary" onClick={handleCopyLocationLink}>
+                    <Copy size={16} /> Copy Location Text
+                  </button>
+                </div>
+              </div>
+
+              {/* Direct Ambulance Dial Callout */}
+              <div className="ambulance-direct-callout">
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div className="bot-avatar-badge" style={{ background: "var(--brick)" }}>
+                    <HeartPulse size={22} color="#fff" />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 16 }}>Direct Government Emergency Ambulance</h3>
+                    <p style={{ margin: "2px 0 0", color: "var(--ink-soft)", fontSize: 12 }}>
+                      Dial 108 (National Medical Emergency Response Service)
+                    </p>
+                  </div>
+                </div>
+                <a href="tel:108" className="btn btn--emergency-dial" style={{ padding: "10px 20px" }}>
+                  <PhoneCall size={16} /> Dial 108 Ambulance
+                </a>
+              </div>
+            </div>
+
+            {/* Right Column: Ambulance Dispatch Form Simulator */}
+            <div className="doc-detail-side-panel">
+              <div className="side-card" style={{ borderColor: "rgba(225, 29, 72, 0.3)" }}>
+                <div className="side-card__header">
+                  <Navigation size={18} color="var(--brick)" />
+                  <h3 className="side-card__title">Ambulance Request Form</h3>
+                </div>
+
+                <form onSubmit={handleDispatchSubmit} style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 12 }}>
+                  <Field label="Critical Patient Condition">
+                    <select
+                      value={patientCondition}
+                      onChange={(e) => setPatientCondition(e.target.value)}
+                      style={{ width: "100%", padding: "8px", borderRadius: 8, border: "1px solid var(--border)" }}
+                    >
+                      <option value="Unconscious / Non-Responsive">Unconscious / Non-Responsive</option>
+                      <option value="Breathing Difficulty / Asphyxia">Breathing Difficulty / Asphyxia</option>
+                      <option value="Severe Bleeding & Trauma">Severe Bleeding & Trauma</option>
+                      <option value="Chest Pain / Suspected Heart Attack">Chest Pain / Suspected Heart Attack</option>
+                      <option value="Stroke Symptoms (FAST)">Stroke Symptoms (FAST)</option>
+                      <option value="Burns / Envenomation / Snake Bite">Burns / Envenomation / Snake Bite</option>
+                    </select>
+                  </Field>
+
+                  <Field label="Callback Contact Phone">
+                    <input
+                      type="tel"
+                      placeholder="Your mobile phone number"
+                      value={dispatchPhone}
+                      onChange={(e) => setDispatchPhone(e.target.value)}
+                    />
+                  </Field>
+
+                  <Field label="Landmark / Address Notes">
+                    <input
+                      type="text"
+                      placeholder="e.g. Near Bus Stand / Gate 2"
+                      value={dispatchLandmark}
+                      onChange={(e) => setDispatchLandmark(e.target.value)}
+                    />
+                  </Field>
+
+                  <button type="submit" className="btn btn--emergency-dial" style={{ width: "100%", justifyContent: "center", marginTop: 6 }}>
+                    <PhoneCall size={16} /> Dispatch Emergency Call (108)
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </Shell>
+  );
+}
+
+function roundCoords(num) {
+  return typeof num === "number" ? num.toFixed(4) : num;
 }
 
 // ---------------------------------------------------------------------------
@@ -4938,6 +5793,15 @@ export default function App() {
         onNav={goTo}
         onLogout={handleLogout}
         onProfileUpdated={(updated) => setProfile(updated)}
+      />
+    );
+  } else if (screen === "emergency") {
+    body = (
+      <EmergencyScreen
+        role={role}
+        patientProfile={profile}
+        onNav={goTo}
+        onLogout={handleLogout}
       />
     );
   } else if (screen === "patientDetail") {
