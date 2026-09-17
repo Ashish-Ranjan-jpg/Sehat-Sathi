@@ -1,7 +1,6 @@
-# Use Python 3.10 slim base image
 FROM python:3.10-slim
 
-# Install system dependencies: Tesseract OCR, Poppler (PDF renderer), OpenCV dependencies
+# Install system dependencies (Tesseract OCR, Poppler PDF utilities, OpenCV requirements)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-eng \
@@ -13,18 +12,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory inside container
 WORKDIR /app
 
-# Copy requirements file and install Python packages
+# Copy requirements and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all application files
+# Copy application files
 COPY . .
 
-# Hugging Face Spaces default port is 7860
-EXPOSE 7860
+# Create working directories
+RUN mkdir -p uploaded_documents pipeline_stages
 
-# Run Uvicorn FastAPI server on port 7860
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "7860"]
+EXPOSE 8000
+
+# Start FastAPI server (reads PORT environment variable or defaults to 8000)
+CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}"]
