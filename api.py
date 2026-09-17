@@ -327,12 +327,12 @@ async def upload_document(
         _cleanup_failed_upload(stored_path)
         raise HTTPException(status_code=502, detail=str(e))
 
-    except Exception:
+    except Exception as e:
         print(traceback.format_exc())
         _cleanup_failed_upload(stored_path)
         raise HTTPException(
             status_code=500,
-            detail="An unexpected error occurred while processing the document."
+            detail=f"Processing failed: {str(e)}"
         )
 
 
