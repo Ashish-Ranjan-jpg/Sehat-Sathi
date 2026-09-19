@@ -258,5 +258,69 @@ export const api = {
     });
     return await request(`/api/nearby-facilities?${params.toString()}`);
   },
+
+  // Healthcare Database (MedlinePlus)
+  healthDb: {
+    async search(query, language = "en") {
+      const params = new URLSearchParams({ q: query, lang: language });
+      return await request(`/api/health-db/search?${params.toString()}`);
+    },
+
+    async getPopular(language = "en") {
+      const params = new URLSearchParams({ lang: language });
+      const res = await request(`/api/health-db/popular?${params.toString()}`);
+      return res.topics || [];
+    },
+
+    async getTopic(topicId) {
+      return await request(`/api/health-db/topic/${topicId}`);
+    },
+
+    async translateTopic(topicId, targetLang) {
+      return await request("/api/health-db/translate", {
+        method: "POST",
+        body: { topic_id: topicId, target_lang: targetLang },
+      });
+    },
+  },
+
+  // Medication Reminders
+  reminders: {
+    async list() {
+      const res = await request("/api/reminders");
+      return res.reminders || [];
+    },
+
+    async create(reminderData) {
+      return await request("/api/reminders", {
+        method: "POST",
+        body: reminderData,
+      });
+    },
+
+    async delete(reminderId) {
+      return await request(`/api/reminders/${reminderId}`, {
+        method: "DELETE",
+      });
+    },
+
+    async getLogs() {
+      const res = await request("/api/reminders/logs");
+      return res.logs || [];
+    },
+
+    async markTaken(logId) {
+      return await request(`/api/reminders/logs/${logId}/take`, {
+        method: "POST",
+      });
+    },
+
+    async snooze(logId, minutes = 15) {
+      return await request(`/api/reminders/logs/${logId}/snooze?minutes=${minutes}`, {
+        method: "POST",
+      });
+    },
+  },
 };
+
 

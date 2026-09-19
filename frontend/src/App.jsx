@@ -63,6 +63,12 @@ import {
   HeartPulse,
   ExternalLink,
   LifeBuoy,
+  Bell,
+  Clock,
+  Calendar,
+  UserCheck,
+  CheckSquare,
+  AlarmClock,
 } from "lucide-react";
 import { api, getToken, clearToken } from "./api";
 
@@ -1039,12 +1045,16 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
 
   const patientNav = [
     { key: "dashboard", label: "Your documents", icon: Home },
+    { key: "reminders", label: "Medication Reminders", icon: Bell },
+    { key: "healthDatabase", label: "Health Library", icon: HeartPulse },
     { key: "upload", label: "Upload a document", icon: UploadCloud },
     { key: "emergency", label: "Emergency Aid", icon: ShieldAlert },
     { key: "profile", label: "Your profile", icon: User },
   ];
   const workerNav = [
     { key: "dashboard", label: "Patient Directory", icon: Users },
+    { key: "reminders", label: "Medication Reminders", icon: Bell },
+    { key: "healthDatabase", label: "Health Library", icon: HeartPulse },
     { key: "upload", label: "Upload Document", icon: UploadCloud },
     { key: "emergency", label: "Emergency Aid", icon: ShieldAlert },
   ];
@@ -1053,6 +1063,8 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
     { key: "users", label: "Users", icon: UserCog },
     { key: "patients", label: "Patients", icon: Users },
     { key: "documents", label: "Documents", icon: FileText },
+    { key: "reminders", label: "Medication Reminders", icon: Bell },
+    { key: "healthDatabase", label: "Health Library", icon: HeartPulse },
     { key: "emergency", label: "Emergency Aid", icon: ShieldAlert },
   ];
   const items = role === "patient" ? patientNav : role === "healthcare_worker" ? workerNav : adminNav;
@@ -1455,14 +1467,22 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
             {recentMeds.length > 0 ? (
               <div className="med-widget-list">
                 {recentMeds.slice(0, 5).map((m, idx) => (
-                  <div key={idx} className="med-widget-item">
+                  <div key={idx} className="med-widget-item" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <div className="med-widget-name">{m.name}</div>
                       <div className="med-widget-sub">
                         {m.dosage ? `Dosage: ${m.dosage}` : "As prescribed"} {m.frequency ? `· ${m.frequency}` : ""}
                       </div>
                     </div>
-                    <span className="badge badge--teal" style={{ fontSize: 10 }}>Rx</span>
+                    <button
+                      type="button"
+                      className="btn btn--secondary btn--sm"
+                      onClick={() => onNav("reminders", { medicine_name: m.name, dosage: `${m.dosage || ''} ${m.frequency || ''}`.trim() })}
+                      style={{ fontSize: 11, padding: "4px 8px" }}
+                      title="Schedule Twilio Reminder"
+                    >
+                      <AlarmClock size={12} /> Set Reminder
+                    </button>
                   </div>
                 ))}
               </div>
@@ -2458,6 +2478,9 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
       const botMsg = {
         sender: "bot",
         text: responseText,
+        source: res.source || "ai_generated",
+        medlineplusTopic: res.medlineplus_topic || null,
+        aiGenerated: res.ai_generated ?? true,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
 
@@ -2478,6 +2501,8 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
       const errorMsg = {
         sender: "bot",
         text: "Sorry, I encountered an error answering your query. Please try again.",
+        source: "ai_generated",
+        aiGenerated: true,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -2607,6 +2632,29 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
               </div>
             )}
             <div className="chat-bubble">
+              {m.sender === "bot" && (
+                <div style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  {m.source === "medlineplus" ? (
+                    <span className="badge badge--teal" style={{ fontSize: 10, padding: "2px 6px" }}>
+                      <ShieldCheck size={10} style={{ marginRight: 3, verticalAlign: "middle" }} /> MedlinePlus Database
+                    </span>
+                  ) : (
+                    <span className="badge badge--paper" style={{ fontSize: 10, padding: "2px 6px", color: "var(--ink-soft)" }}>
+                      <Sparkles size={10} style={{ marginRight: 3, verticalAlign: "middle" }} /> AI Generated Response
+                    </span>
+                  )}
+                  {m.medlineplusTopic?.url && (
+                    <a
+                      href={m.medlineplusTopic.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: 10, color: "var(--teal)", textDecoration: "underline" }}
+                    >
+                      View MedlinePlus topic
+                    </a>
+                  )}
+                </div>
+              )}
               <div className="chat-text">{m.text}</div>
               <div className="chat-meta">
                 <span>{m.time}</span>
@@ -2796,6 +2844,75 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
           <div className="doc-detail-main">
             {/* TTS Player */}
             <TTSPlayer extraction={extraction} />
+
+            {/* EXTRACTED PRESCRIBED MEDICATIONS SECTION */}
+            {medications.length > 0 && (
+              <div className="section" style={{ marginTop: 24 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, fontSize: 18, color: "var(--ink)" }}>
+                    <Pill size={20} color="var(--teal)" /> Prescribed Medications ({medications.length})
+                  </h2>
+                  <span className="badge badge--teal" style={{ fontSize: 11 }}>Structured AI Extraction</span>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {paginatedMedications.map((med, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        background: "var(--panel)",
+                        border: "1px solid var(--border-soft)",
+                        borderRadius: 12,
+                        padding: "16px 18px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 16,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                          <h4 style={{ margin: 0, fontSize: 16, color: "var(--ink)", fontWeight: 700 }}>{med.name || "Unknown Medicine"}</h4>
+                          {med.dosage && <span className="badge badge--gold" style={{ fontSize: 11 }}>{med.dosage}</span>}
+                        </div>
+
+                        <div style={{ fontSize: 13, color: "var(--ink-soft)", display: "flex", gap: 16, flexWrap: "wrap", marginTop: 4 }}>
+                          {med.frequency && <span><strong>Frequency:</strong> {med.frequency}</span>}
+                          {med.duration && <span><strong>Duration:</strong> {med.duration}</span>}
+                        </div>
+
+                        {med.instruction && (
+                          <div style={{ fontSize: 12, color: "var(--teal)", marginTop: 6, fontStyle: "italic" }}>
+                            💡 {med.instruction}
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        className="btn btn--primary btn--sm"
+                        onClick={() => onNav("reminders", { medicine_name: med.name, dosage: `${med.dosage || ''} ${med.frequency || ''}`.trim(), document_id: documentId })}
+                        style={{ fontSize: 12 }}
+                      >
+                        <AlarmClock size={14} /> Set Reminder
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {medications.length > 5 && (
+                  <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+                    <Pagination
+                      currentPage={medPage}
+                      totalItems={medications.length}
+                      pageSize={5}
+                      onPageChange={setMedPage}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="section" style={{ marginTop: 24 }}>
               <h2>Plain Language Explanations</h2>
@@ -5630,6 +5747,921 @@ function AdminDocumentsPanel() {
 }
 
 // ---------------------------------------------------------------------------
+// HEALTHCARE DATABASE SCREEN (MedlinePlus Integration)
+// ---------------------------------------------------------------------------
+
+function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
+  const [query, setQuery] = useState("");
+  const [language, setLanguage] = useState("en");
+  const [popularTopics, setPopularTopics] = useState([]);
+  const [searchResults, setSearchResults] = useState(null);
+  const [loadingPopular, setLoadingPopular] = useState(true);
+  const [searching, setSearching] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState(null);
+  const [searchSource, setSearchSource] = useState("");
+
+  // On-demand article translation state
+  const [targetLang, setTargetLang] = useState(profile?.preferred_language ? getLanguageCode(profile.preferred_language) : "hi");
+  const [translating, setTranslating] = useState(false);
+  const [activeTranslatedTopic, setActiveTranslatedTopic] = useState(null);
+
+  // Lock background scroll when modal is open
+  useEffect(() => {
+    if (selectedTopic) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [selectedTopic]);
+
+  useEffect(() => {
+    let active = true;
+    async function fetchPopular() {
+      setLoadingPopular(true);
+      try {
+        const topics = await api.healthDb.getPopular("en");
+        if (active) setPopularTopics(topics);
+      } catch (err) {
+        console.error("Failed to load popular topics", err);
+      } finally {
+        if (active) setLoadingPopular(false);
+      }
+    }
+    fetchPopular();
+    return () => { active = false; };
+  }, []);
+
+  async function handleSearch(e) {
+    if (e) e.preventDefault();
+    if (!query.trim()) return;
+    setSearching(true);
+    try {
+      const res = await api.healthDb.search(query.trim(), "en");
+      setSearchResults(res.results || []);
+      setSearchSource(res.source || "");
+    } catch (err) {
+      toast("Search error: " + err.message, "error");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function handleTopicClick(topic) {
+    setSelectedTopic(topic);
+    setActiveTranslatedTopic(null);
+  }
+
+  function handleCloseModal() {
+    setSelectedTopic(null);
+    setActiveTranslatedTopic(null);
+  }
+
+  function handleClearSearch() {
+    setQuery("");
+    setSearchResults(null);
+    setSearchSource("");
+  }
+
+  async function handleTranslateArticle(topicId, langCode) {
+    if (!topicId) return;
+    setTranslating(true);
+    try {
+      const res = await api.healthDb.translateTopic(topicId, langCode);
+      setActiveTranslatedTopic(res);
+      if (selectedTopic && res.title === selectedTopic.title && res.summary === selectedTopic.summary) {
+        toast("Translation service limit reached. Showing English version.", "error");
+      } else {
+        toast(`Article translated to ${getLanguageName(langCode)}!`);
+      }
+    } catch (err) {
+      toast("Translation error: " + err.message, "error");
+    } finally {
+      setTranslating(false);
+    }
+  }
+
+  function getCardSnippet(topic) {
+    const raw = topic.snippet || topic.summary || "";
+    const clean = raw.replace(/<[^>]+>/g, "").trim();
+    if (!clean) return "Click to read full topic details and guidelines.";
+    if (clean.length <= 110) return clean;
+    return clean.slice(0, 108) + "…";
+  }
+
+  const displayTopic = activeTranslatedTopic || selectedTopic;
+
+  return (
+    <Shell
+      role={role}
+      active="healthDatabase"
+      onNav={onNav}
+      onLogout={onLogout}
+      userName={profile?.name}
+      title="Healthcare Information Library"
+      subtitle="Powered by MedlinePlus (National Library of Medicine). Search medical topics and read trusted health guidelines in your language."
+    >
+      <div className="health-db-container">
+        {/* Search Bar */}
+        <div className="health-db-search-card">
+          <form onSubmit={handleSearch} className="health-db-search-form">
+            <div className="health-db-search-input-wrap">
+              <Search size={18} color="var(--teal)" />
+              <input
+                type="text"
+                placeholder="Search any disease, symptom, medication, or condition..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              {query && (
+                <button type="button" className="btn-icon-subtle" onClick={handleClearSearch}>
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            <button type="submit" className="btn btn--primary" disabled={searching || !query.trim()}>
+              {searching ? <Loader2 size={16} className="spin" /> : "Search Library"}
+            </button>
+          </form>
+
+          <div className="health-db-search-hint">
+            <span>💡 Popular searches:</span>
+            {["Diabetes", "High Blood Pressure", "Asthma", "Pregnancy", "Anxiety"].map((term) => (
+              <button
+                key={term}
+                type="button"
+                className="chip-btn chip-btn--sm"
+                onClick={() => {
+                  setQuery(term);
+                  setSearching(true);
+                  api.healthDb.search(term, "en").then((res) => {
+                    setSearchResults(res.results || []);
+                    setSearchSource(res.source || "");
+                    setSearching(false);
+                  });
+                }}
+              >
+                {term}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* SEARCH RESULTS VIEW */}
+        {searchResults !== null && (
+          <div className="health-db-results-section">
+            <div className="health-db-results-header">
+              <h2 style={{ margin: 0, fontSize: 18 }}>
+                Search Results for "{query}"
+                <span className="results-count-badge" style={{ marginLeft: 8, fontSize: 13, fontWeight: 500, color: "var(--ink-soft)" }}>
+                  ({searchResults.length} topics)
+                </span>
+              </h2>
+              {searchSource && (
+                <span className="badge badge--teal">
+                  <ShieldCheck size={12} style={{ marginRight: 4 }} /> {searchSource === "cache" ? "Instant Cache" : "MedlinePlus Web Service"}
+                </span>
+              )}
+            </div>
+
+            {searchResults.length === 0 ? (
+              <div className="empty-state">
+                <FileText size={36} color="var(--ink-faint)" />
+                <p>No health topics found matching "{query}". Try a different keyword.</p>
+              </div>
+            ) : (
+              <div className="health-db-grid">
+                {searchResults.map((topic, i) => (
+                  <div key={topic.id || i} className="health-topic-card" onClick={() => handleTopicClick(topic)}>
+                    <div className="health-topic-card__header">
+                      <h3 className="health-topic-title">{topic.title}</h3>
+                      <span className="badge badge--sage">MedlinePlus</span>
+                    </div>
+
+                    <p className="health-topic-snippet">
+                      {getCardSnippet(topic)}
+                    </p>
+
+                    {topic.groups && topic.groups.length > 0 && (
+                      <div className="health-topic-groups">
+                        {topic.groups.slice(0, 2).map((g, idx) => (
+                          <span key={idx} className="topic-group-tag">{g}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="health-topic-card__footer">
+                      <span className="topic-org-label">{topic.organization || "National Library of Medicine"}</span>
+                      <button type="button" className="btn-link" style={{ background: "none", border: "none", color: "var(--teal)", cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 2 }}>
+                        Read Topic <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* POPULAR TOPICS LANDING GRID */}
+        {searchResults === null && (
+          <div className="health-db-popular-section">
+            <div className="health-db-section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18 }}>Popular Health Topics</h2>
+                <p className="section-sub" style={{ margin: "2px 0 0", color: "var(--ink-soft)", fontSize: 13 }}>
+                  Essential healthcare guidelines curated from MedlinePlus
+                </p>
+              </div>
+            </div>
+
+            {loadingPopular ? (
+              <div className="loading-box" style={{ padding: 40 }}>
+                <div className="pulse-ring" />
+                <p style={{ color: "var(--ink-soft)", margin: 0 }}>Loading health library topics...</p>
+              </div>
+            ) : (
+              <div className="health-db-grid">
+                {popularTopics.map((topic, i) => (
+                  <div key={topic.id || i} className="health-topic-card" onClick={() => handleTopicClick(topic)}>
+                    <div className="health-topic-card__header">
+                      <h3 className="health-topic-title">{topic.title}</h3>
+                      <span className="badge badge--teal">Verified</span>
+                    </div>
+
+                    <p className="health-topic-snippet">
+                      {getCardSnippet(topic)}
+                    </p>
+
+                    {topic.groups && topic.groups.length > 0 && (
+                      <div className="health-topic-groups">
+                        {topic.groups.slice(0, 2).map((g, idx) => (
+                          <span key={idx} className="topic-group-tag">{g}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="health-topic-card__footer">
+                      <span className="topic-org-label">MedlinePlus / NLM</span>
+                      <button type="button" className="btn-link" style={{ background: "none", border: "none", color: "var(--teal)", cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 2 }}>
+                        Read Topic <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TOPIC DETAIL MODAL */}
+        {selectedTopic && displayTopic && (
+          <div className="modal-backdrop" onClick={handleCloseModal}>
+            <div
+              className="modal-card health-topic-modal"
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: 680, width: "90%", maxHeight: "85vh", display: "flex", flexDirection: "column" }}
+            >
+              {/* Header with Title & Prominent Close (X) Button */}
+              <div className="health-topic-modal__header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: 12, borderBottom: "1px solid var(--border-soft)" }}>
+                <div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
+                    <span className="badge badge--teal">
+                      <ShieldCheck size={12} style={{ marginRight: 3 }} /> MedlinePlus Verified
+                    </span>
+                    {activeTranslatedTopic ? (
+                      <span className="badge badge--gold">
+                        Translated ({getLanguageName(activeTranslatedTopic.language)})
+                      </span>
+                    ) : (
+                      <span className="badge badge--paper">English Original</span>
+                    )}
+                  </div>
+                  <h2 style={{ margin: 0, fontSize: 20, color: "var(--ink)" }}>{displayTopic.title}</h2>
+                </div>
+
+                <button
+                  type="button"
+                  className="modal-close-cross-btn"
+                  onClick={handleCloseModal}
+                  title="Close Article (Esc)"
+                  aria-label="Close article"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Translation Toolbar at top of article */}
+              <div className="topic-translate-bar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "10px 14px", background: "var(--bg-subtle)", borderRadius: 10, margin: "12px 0 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Globe size={15} color="var(--teal)" />
+                  <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>Translate this article:</span>
+                  <select
+                    value={targetLang}
+                    onChange={(e) => setTargetLang(e.target.value)}
+                    style={{ fontSize: 12, padding: "5px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--panel)", color: "var(--ink)" }}
+                  >
+                    {LANGUAGES.map((l) => (
+                      <option key={l.code} value={l.code}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn--primary btn--sm"
+                    disabled={translating}
+                    onClick={() => handleTranslateArticle(selectedTopic.id, targetLang)}
+                    style={{ fontSize: 12 }}
+                  >
+                    {translating ? <Loader2 size={13} className="spin" /> : "Translate Article"}
+                  </button>
+
+                  {activeTranslatedTopic && (
+                    <button
+                      type="button"
+                      className="btn btn--secondary btn--sm"
+                      onClick={() => setActiveTranslatedTopic(null)}
+                      style={{ fontSize: 12 }}
+                    >
+                      Show Original (English)
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Scrollable Body Only */}
+              <div className="health-topic-modal__body" style={{ overflowY: "auto", flex: 1, paddingRight: 4 }}>
+                {displayTopic.summary && (
+                  <div className="topic-summary-box" style={{ background: "var(--panel)", padding: 18, border: "1px solid var(--border-soft)", borderRadius: "var(--radius-m)", marginBottom: 16 }}>
+                    <h4 style={{ margin: "0 0 10px", fontSize: 14, color: "var(--teal)", fontWeight: 600 }}>Medical Summary & Guidelines</h4>
+                    <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.65, margin: 0, fontSize: 14, color: "var(--ink)" }}>{displayTopic.summary}</p>
+                  </div>
+                )}
+
+                {displayTopic.snippet && !displayTopic.summary && (
+                  <div className="topic-summary-box" style={{ background: "var(--panel)", padding: 18, border: "1px solid var(--border-soft)", borderRadius: "var(--radius-m)", marginBottom: 16 }}>
+                    <h4 style={{ margin: "0 0 10px", fontSize: 14, color: "var(--teal)", fontWeight: 600 }}>Key Highlights</h4>
+                    <p style={{ margin: 0, fontSize: 14, color: "var(--ink)", lineHeight: 1.6 }}>{displayTopic.snippet}</p>
+                  </div>
+                )}
+
+                {displayTopic.groups && displayTopic.groups.length > 0 && (
+                  <div style={{ marginTop: 16, marginBottom: 16 }}>
+                    <h4 style={{ fontSize: 13, color: "var(--ink-soft)", margin: "0 0 6px" }}>Categories & Health Groups</h4>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {displayTopic.groups.map((g, idx) => (
+                        <span key={idx} className="topic-group-tag" style={{ fontSize: 12, padding: "4px 10px", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 12 }}>{g}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Fixed Footer */}
+              <div className="topic-modal-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 14, marginTop: 12, borderTop: "1px solid var(--border-soft)" }}>
+                <div className="topic-org-info" style={{ fontSize: 12, color: "var(--ink-soft)" }}>
+                  <strong>Source Authority:</strong> {displayTopic.organization || "U.S. National Library of Medicine (MedlinePlus)"}
+                </div>
+                {selectedTopic.url && (
+                  <a
+                    href={selectedTopic.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn--secondary btn--sm"
+                    style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }}
+                  >
+                    View on MedlinePlus.gov <ExternalLink size={13} />
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </Shell>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// MEDICATION REMINDERS SCREEN
+// ---------------------------------------------------------------------------
+
+function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, clearPrefilledReminder }) {
+  const [reminders, setReminders] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Form state
+  const [medicineName, setMedicineName] = useState("");
+  const [dosage, setDosage] = useState("");
+  const [frequency, setFrequency] = useState("daily");
+  const [time1, setTime1] = useState("08:00");
+  const [time2, setTime2] = useState("20:00");
+  const [useSecondTime, setUseSecondTime] = useState(false);
+  const [patientPhone, setPatientPhone] = useState(profile?.phone_number || "");
+  const [caregiverName, setCaregiverName] = useState(profile?.emergency_contact || "");
+  const [caregiverPhone, setCaregiverPhone] = useState("");
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [endDate, setEndDate] = useState("");
+  const [documentId, setDocumentId] = useState("");
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [rems, lg] = await Promise.all([
+        api.reminders.list(),
+        api.reminders.getLogs(),
+      ]);
+      setReminders(rems);
+      setLogs(lg);
+    } catch (err) {
+      toast("Error loading reminders: " + err.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    if (prefilledReminder) {
+      setMedicineName(prefilledReminder.medicine_name || "");
+      setDosage(prefilledReminder.dosage || "");
+      if (prefilledReminder.document_id) setDocumentId(prefilledReminder.document_id);
+      setShowModal(true);
+      if (clearPrefilledReminder) clearPrefilledReminder();
+    }
+  }, [prefilledReminder, clearPrefilledReminder]);
+
+  async function handleCreateReminder(e) {
+    e.preventDefault();
+    if (!medicineName.trim()) {
+      toast("Please enter medicine name", "error");
+      return;
+    }
+    const times = [time1];
+    if (useSecondTime && time2) times.push(time2);
+
+    setSubmitting(true);
+    try {
+      await api.reminders.create({
+        medicine_name: medicineName.trim(),
+        dosage: dosage.trim(),
+        times,
+        frequency,
+        patient_phone: patientPhone.trim(),
+        caregiver_name: caregiverName.trim(),
+        caregiver_phone: caregiverPhone.trim(),
+        start_date: startDate,
+        end_date: endDate || null,
+        document_id: documentId || null,
+      });
+      toast("Medication reminder created successfully!");
+      setShowModal(false);
+      setMedicineName("");
+      setDosage("");
+      loadData();
+    } catch (err) {
+      toast("Failed to create reminder: " + err.message, "error");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleMarkTaken(logId) {
+    try {
+      await api.reminders.markTaken(logId);
+      toast("Medication marked as TAKEN! Great job staying on schedule.");
+      loadData();
+    } catch (err) {
+      toast("Failed to update status: " + err.message, "error");
+    }
+  }
+
+  async function handleSnooze(logId) {
+    try {
+      await api.reminders.snooze(logId, 15);
+      toast("Reminder snoozed for 15 minutes.");
+      loadData();
+    } catch (err) {
+      toast("Failed to snooze: " + err.message, "error");
+    }
+  }
+
+  async function handleDeleteReminder(reminderId) {
+    showConfirm({
+      title: "Delete Reminder Schedule?",
+      message: "This will remove the schedule and stop SMS notifications. Are you sure?",
+      danger: true,
+      confirmLabel: "Delete Schedule",
+      onConfirm: async () => {
+        try {
+          await api.reminders.delete(reminderId);
+          toast("Reminder schedule deleted.");
+          loadData();
+        } catch (err) {
+          toast("Failed to delete: " + err.message, "error");
+        }
+      },
+    });
+  }
+
+  const takenCount = logs.filter((l) => l.status === "taken").length;
+  const missedCount = logs.filter((l) => l.status === "missed").length;
+
+  return (
+    <Shell
+      role={role}
+      active="reminders"
+      onNav={onNav}
+      onLogout={onLogout}
+      userName={profile?.name}
+      title="Medication Reminders & Caregiver Alerts"
+      subtitle="Schedule medicine intake, receive automated Twilio SMS reminders, track missed doses, and automatically alert your caregiver."
+    >
+      <div className="health-db-container">
+        {/* Top Summary Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
+          <div style={{ background: "var(--panel)", padding: "16px 20px", borderRadius: 12, border: "1px solid var(--border-soft)", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(42, 157, 143, 0.12)", color: "var(--teal)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Pill size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "var(--ink)" }}>{reminders.length}</div>
+              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>Active Medication Schedules</div>
+            </div>
+          </div>
+
+          <div style={{ background: "var(--panel)", padding: "16px 20px", borderRadius: 12, border: "1px solid var(--border-soft)", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(46, 204, 113, 0.12)", color: "#27ae60", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <CheckCircle2 size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "var(--ink)" }}>{takenCount}</div>
+              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>Doses Taken Today</div>
+            </div>
+          </div>
+
+          <div style={{ background: "var(--panel)", padding: "16px 20px", borderRadius: 12, border: "1px solid var(--border-soft)", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: missedCount > 0 ? "rgba(192, 57, 43, 0.12)" : "rgba(241, 196, 15, 0.12)", color: missedCount > 0 ? "var(--brick)" : "#f39c12", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <AlertCircle size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: missedCount > 0 ? "var(--brick)" : "var(--ink)" }}>{missedCount}</div>
+              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>Missed Doses Today</div>
+            </div>
+          </div>
+
+          <div style={{ background: "var(--panel)", padding: "16px 20px", borderRadius: 12, border: "1px solid var(--border-soft)", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(52, 152, 219, 0.12)", color: "#2980b9", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <UserCheck size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>Caregiver Alerts Active</div>
+              <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>Auto SMS via Twilio on Missed Doses</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section Header with Add Button */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <h2 style={{ fontSize: 20, margin: 0, color: "var(--ink)" }}>Today's Dose Schedule</h2>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: "4px 0 0" }}>
+              {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+          <button className="btn btn--primary" onClick={() => setShowModal(true)}>
+            <Plus size={16} /> Schedule New Reminder
+          </button>
+        </div>
+
+        {/* Today's Dose Logs Timeline */}
+        {loading ? (
+          <div className="loading-box" style={{ padding: 30 }}>
+            <Loader2 size={24} className="spin" color="var(--teal)" />
+            <p style={{ margin: "10px 0 0", color: "var(--ink-soft)" }}>Loading schedule...</p>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="empty-state" style={{ background: "var(--panel)", padding: 36, borderRadius: 12, border: "1px dashed var(--border)", textAlign: "center" }}>
+            <AlarmClock size={36} color="var(--teal)" style={{ marginBottom: 12 }} />
+            <h3 style={{ margin: 0, fontSize: 16 }}>No Dose Schedules for Today</h3>
+            <p style={{ color: "var(--ink-soft)", fontSize: 13, maxWidth: 450, margin: "8px auto 16px" }}>
+              Click "Schedule New Reminder" or set a reminder directly from any prescription document.
+            </p>
+            <button className="btn btn--secondary" onClick={() => setShowModal(true)}>
+              <Plus size={15} /> Create Medication Schedule
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 36 }}>
+            {logs.map((log) => {
+              let timeFmt = "";
+              if (log.scheduled_time) {
+                const parts = log.scheduled_time.split("T");
+                if (parts.length === 2) {
+                  const rawTime = parts[1].replace("Z", "").slice(0, 5);
+                  const [hh, mm] = rawTime.split(":");
+                  let hour = parseInt(hh, 10);
+                  if (!isNaN(hour)) {
+                    const ampm = hour >= 12 ? "PM" : "AM";
+                    hour = hour % 12 || 12;
+                    timeFmt = `${hour}:${mm} ${ampm}`;
+                  }
+                }
+                if (!timeFmt) {
+                  timeFmt = new Date(log.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+              }
+              return (
+                <div
+                  key={log.id}
+                  style={{
+                    background: "var(--panel)",
+                    border: `1px solid ${
+                      log.status === "taken"
+                        ? "rgba(46, 204, 113, 0.3)"
+                        : log.status === "missed"
+                        ? "rgba(192, 57, 43, 0.3)"
+                        : "var(--border-soft)"
+                    }`,
+                    borderRadius: 12,
+                    padding: "16px 20px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 16,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: 8,
+                        background: "var(--bg-subtle)",
+                        fontWeight: 700,
+                        fontSize: 14,
+                        color: "var(--ink)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <Clock size={15} color="var(--teal)" /> {timeFmt}
+                    </div>
+
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 16, color: "var(--ink)" }}>{log.medicine_name}</div>
+                      <div style={{ fontSize: 13, color: "var(--ink-soft)", marginTop: 2 }}>{log.dosage || "As prescribed"}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {log.status === "taken" ? (
+                      <span className="badge badge--teal" style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                        <CheckCircle2 size={14} /> Taken at {log.action_time ? new Date(log.action_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "scheduled time"}
+                      </span>
+                    ) : log.status === "missed" ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span className="badge" style={{ background: "rgba(192, 57, 43, 0.12)", color: "var(--brick)", padding: "6px 12px", fontSize: 12 }}>
+                          <AlertCircle size={14} style={{ marginRight: 4 }} /> Missed Dose
+                        </span>
+                        {log.notified_caregiver === 1 && (
+                          <span style={{ fontSize: 11, color: "var(--brick)", fontWeight: 500 }}>
+                            📢 Caregiver Notified via Twilio
+                          </span>
+                        )}
+                        <button className="btn btn--secondary btn--sm" onClick={() => handleMarkTaken(log.id)} style={{ fontSize: 12 }}>
+                          Mark Taken Now
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button className="btn btn--primary btn--sm" onClick={() => handleMarkTaken(log.id)} style={{ fontSize: 12 }}>
+                          <CheckCircle2 size={14} /> Mark as Taken
+                        </button>
+                        <button className="btn btn--secondary btn--sm" onClick={() => handleSnooze(log.id)} style={{ fontSize: 12 }}>
+                          <Clock size={13} /> Snooze (15m)
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Active Schedules Section */}
+        <div style={{ marginTop: 32 }}>
+          <h3 style={{ fontSize: 18, color: "var(--ink)", marginBottom: 14 }}>Active Medication Schedules</h3>
+
+          {reminders.length === 0 ? (
+            <p style={{ color: "var(--ink-soft)", fontSize: 13 }}>No active medication schedules set up yet.</p>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
+              {reminders.map((rem) => (
+                <div key={rem.id} style={{ background: "var(--panel)", padding: 20, borderRadius: 12, border: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                      <h4 style={{ margin: 0, fontSize: 17, color: "var(--ink)" }}>{rem.medicine_name}</h4>
+                      <span className="badge badge--gold" style={{ fontSize: 11 }}>{rem.frequency}</span>
+                    </div>
+
+                    <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: "0 0 12px" }}>
+                      Dosage: <strong>{rem.dosage || "As prescribed"}</strong>
+                    </p>
+
+                    <div style={{ fontSize: 12, color: "var(--ink)", background: "var(--bg-subtle)", padding: "8px 12px", borderRadius: 8, marginBottom: 12 }}>
+                      ⏰ Scheduled Times: <strong>{Array.isArray(rem.times) ? rem.times.join(", ") : rem.times}</strong>
+                    </div>
+
+                    {rem.patient_phone && (
+                      <div style={{ fontSize: 12, color: "var(--ink-soft)", marginBottom: 4 }}>
+                        📱 Patient Phone: {rem.patient_phone}
+                      </div>
+                    )}
+
+                    {rem.caregiver_phone && (
+                      <div style={{ fontSize: 12, color: "var(--ink-soft)", marginBottom: 4 }}>
+                        🚨 Caregiver: <strong>{rem.caregiver_name || "Assigned"}</strong> ({rem.caregiver_phone})
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border-soft)" }}>
+                    <button className="btn btn--secondary btn--sm" onClick={() => handleDeleteReminder(rem.id)} style={{ color: "var(--brick)", fontSize: 12 }}>
+                      <Trash2 size={13} /> Remove Schedule
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Modal: Schedule New Reminder */}
+        {showModal && (
+          <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 }}>
+            <div style={{ background: "var(--panel)", borderRadius: 16, width: "100%", maxWidth: 520, padding: 24, boxShadow: "0 20px 40px rgba(0,0,0,0.2)", maxHeight: "90vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h3 style={{ margin: 0, fontSize: 18, color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <AlarmClock size={20} color="var(--teal)" /> Schedule Medication Reminder
+                </h3>
+                <button type="button" onClick={() => setShowModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-soft)" }}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateReminder} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Medicine Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={medicineName}
+                    onChange={(e) => setMedicineName(e.target.value)}
+                    placeholder="e.g. Paracetamol, Metformin"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--ink)" }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Dosage / Instructions</label>
+                  <input
+                    type="text"
+                    value={dosage}
+                    onChange={(e) => setDosage(e.target.value)}
+                    placeholder="e.g. 500mg after meal"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--ink)" }}
+                  />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Reminder Time 1 *</label>
+                    <input
+                      type="time"
+                      required
+                      value={time1}
+                      onChange={(e) => setTime1(e.target.value)}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--ink)" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Reminder Time 2 (Optional)</label>
+                    {useSecondTime ? (
+                      <input
+                        type="time"
+                        value={time2}
+                        onChange={(e) => setTime2(e.target.value)}
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--ink)" }}
+                      />
+                    ) : (
+                      <button type="button" className="btn btn--secondary" onClick={() => setUseSecondTime(true)} style={{ width: "100%", fontSize: 12, height: 42 }}>
+                        + Add 2nd Time
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Frequency</label>
+                    <select
+                      value={frequency}
+                      onChange={(e) => setFrequency(e.target.value)}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--ink)" }}
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="as_needed">As Needed</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Start Date</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--ink)" }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ background: "var(--bg-subtle)", padding: 14, borderRadius: 10, border: "1px solid var(--border-soft)", marginTop: 4 }}>
+                  <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "var(--teal)", display: "flex", alignItems: "center", gap: 6 }}>
+                    <Phone size={14} /> Twilio SMS & Caregiver Notification Setup
+                  </h4>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}>Patient Phone (SMS)</label>
+                      <input
+                        type="tel"
+                        value={patientPhone}
+                        onChange={(e) => setPatientPhone(e.target.value)}
+                        placeholder="+15005550006"
+                        style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 12, background: "var(--panel)", color: "var(--ink)" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}>Caregiver Name</label>
+                      <input
+                        type="text"
+                        value={caregiverName}
+                        onChange={(e) => setCaregiverName(e.target.value)}
+                        placeholder="e.g. Son / Doctor"
+                        style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 12, background: "var(--panel)", color: "var(--ink)" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 8 }}>
+                    <label style={{ display: "block", fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}>Caregiver Phone (Missed Dose SMS Alert)</label>
+                    <input
+                      type="tel"
+                      value={caregiverPhone}
+                      onChange={(e) => setCaregiverPhone(e.target.value)}
+                      placeholder="+15005550006"
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 12, background: "var(--panel)", color: "var(--ink)" }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 12 }}>
+                  <button type="button" className="btn btn--secondary" onClick={() => setShowModal(false)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn--primary" disabled={submitting}>
+                    {submitting ? <Loader2 size={16} className="spin" /> : "Save & Activate Schedule"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    </Shell>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
 // ROOT APP COMPONENT
 // ---------------------------------------------------------------------------
 
@@ -5640,6 +6672,7 @@ export default function App() {
   const [screen, setScreen] = useState("landing");
   const [activePatient, setActivePatient] = useState(null);
   const [activeDocId, setActiveDocId] = useState(null);
+  const [prefilledReminder, setPrefilledReminder] = useState(null);
   const [bootstrapping, setBootstrapping] = useState(true);
 
   // Restore authenticated session on mount
@@ -5680,10 +6713,13 @@ export default function App() {
     setScreen("landing");
   }
 
-  function goTo(key) {
+  function goTo(key, payload = null) {
     if (key === "login") {
       handleLogout();
       return;
+    }
+    if (payload) {
+      setPrefilledReminder(payload);
     }
     if (role === "patient" && key === "patientDetail") key = "dashboard";
     if (role === "healthcare_worker" && key === "profile") key = "dashboard";
@@ -5762,6 +6798,26 @@ export default function App() {
         onLogout={handleLogout}
       />
     );
+  } else if (screen === "healthDatabase") {
+    body = (
+      <HealthDatabaseScreen
+        role={role}
+        profile={profile}
+        onNav={goTo}
+        onLogout={handleLogout}
+      />
+    );
+  } else if (screen === "reminders") {
+    body = (
+      <RemindersScreen
+        role={role}
+        profile={profile}
+        onNav={goTo}
+        onLogout={handleLogout}
+        prefilledReminder={prefilledReminder}
+        clearPrefilledReminder={() => setPrefilledReminder(null)}
+      />
+    );
   } else if (screen === "upload") {
     body = (
       <UploadScreen
@@ -5832,3 +6888,4 @@ export default function App() {
     </div>
   );
 }
+

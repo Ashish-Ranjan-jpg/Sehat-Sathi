@@ -1,16 +1,16 @@
 {
   "document_type": "prescription",
-  "raw_text": "25 El Caro Street\nPleasantyllle, OH 43320\nate\nMarch 10, 2009\natlent Name:\nJoseph McIntyre\nddress:\nOB:\n12/26/1998\nAllergies:\nNKDA\nNeight:\n65 kg\nX:\nAzithromycin 200 mg/smL\nDay 1: 15 mL\nDay 2: 7.5 mL\nDispense s mg/mL solution, 30 mL\nRefills: 0",
+  "raw_text": "Date\n\nPatient Name:\n\nAddress:\nDOB:\nAllergies:\nWeight:\n\nRX:\n\nC.0. Jones\n25 El Caro Street\nPleasantville, OH 43320\nMarch 10, 2009\nJoseph McIntyre\n\n12/26/1998\nAKDA\nos kg\n\nAzithremycin 200 mg/sml.\n\nDay is mL\nDay 2: $s mL\n\nDispense § mg/mL solution, 19 mL\n\nRefills: 0\n\nCO Jones, ARNE\n\n",
   "medications": [
     {
       "name": "Azithromycin",
       "dosage": "200 mg/mL",
       "frequency": "Varies by day",
       "duration": "2 days",
-      "instruction": "Day 1: 15 mL (≈ 3000 mg). Day 2: 7.5 mL (≈ 1500 mg). Dispense 30 mL of 200 mg/mL solution. No refills."
+      "instruction": "Day 1: 15 mL, Day 2: 7.5 mL. Dispense 19 mL of the 200 mg/mL solution."
     }
   ],
-  "simplified_explanation": "Take 15 milliliters of the liquid medicine on the first day, which gives you about 3000 milligrams of azithromycin. On the second day take 7.5 milliliters, which is about 1500 milligrams. The bottle contains 30 milliliters total and you will not get any refills, so you must finish the treatment as prescribed.",
-  "translated_explanation": "पहले दिन 15 मिलीलीटर द्रव दवा लें, जिससे आपको लगभग 3000 मिलीग्राम एज़िथ्रोमाइसिन मिलेगा। दूसरे दिन 7.5 मिलीलीटर लें, जो लगभग 1500 मिलीग्राम के बराबर है। बोतल में कुल 30 मिलीलीटर है और आपको कोई रिफिल नहीं मिलेगा, इसलिए आपको निर्धारित उपचार को पूरा करना होगा।",
+  "simplified_explanation": "Take the 200 mg/mL azithromycin solution as follows: on day 1, take 15 mL; on day 2, take 7.5 mL; in total you will take 19 mL. Each milliliter contains 200 mg of the medicine. Take it at the same time each day, or as your doctor tells you.",
+  "translated_explanation": "200 mg/mL एज़िथ्रोमाइसिन समाधान को निम्नानुसार लें: दिन 1 पर, 15 mL लें; दिन 2 पर, 7.5 mL लें; कुल मिलाकर आप 19 mL लेंगे। प्रत्येक मिलीलीटर में 200 mg दवा होती है। इसे हर दिन एक ही समय पर लें, या जैसा कि आपका डॉक्टर बताता है।",
   "language": "hi"
 }

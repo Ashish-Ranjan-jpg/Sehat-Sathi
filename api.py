@@ -16,6 +16,11 @@ import document_store
 import auth_store
 import auth
 import storage
+import health_database
+import reminder_service
+
+# Start medication reminder background daemon
+reminder_service.start_reminder_daemon()
 
 app = FastAPI(
     title="Healthcare Communication Assistant — Processing API",
@@ -596,15 +601,36 @@ async def chat_with_ai(
 ):
     """
     Context-aware AI medical chatbot endpoint.
-    If document_id is provided, the document's extracted medications and
-    simplified explanation are attached as context to the LLM prompt.
+    Searches the MedlinePlus health database first for relevant medical info.
+    If found, uses MedlinePlus content as primary authority context.
+    Also attaches uploaded document context if document_id is provided.
     """
     from groq import Groq
     import os
 
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-    # Build document context if document_id provided
+    # Step 1: Check Healthcare Database (MedlinePlus) for authoritative info
+    db_topic = None
+    db_context = ""
+    source_badge = "ai_generated"
+
+    try:
+        db_topic = health_database.search_for_chat(req.message)
+        if db_topic:
+            db_context = f"""
+AUTHORITATIVE HEALTH DATABASE INFORMATION (MedlinePlus / NLM):
+Title: {db_topic.get('title')}
+URL: {db_topic.get('url')}
+Summary: {db_topic.get('summary')}
+Snippet: {db_topic.get('snippet')}
+
+If you use information from the above MedlinePlus database entry to answer the user's question, append the tag [SOURCE_MEDLINEPLUS] at the very end of your response. If the database entry is not relevant to what the user asked, or if answering from general knowledge, do NOT include [SOURCE_MEDLINEPLUS].
+"""
+    except Exception as e:
+        print(f"[chat] Database lookup failed, falling back to LLM: {e}")
+
+    # Step 2: Build document context if document_id provided
     context_block = ""
     if req.document_id:
         try:
@@ -655,10 +681,11 @@ TRANSLATED EXPLANATION:
 
 Your role:
 - Help users understand their medical documents, medications, dosages, and instructions
-- Answer general health questions in simple, easy-to-understand language
+- Answer general health questions in simple, easy-to-understand language using trusted database information when provided
 - Never diagnose or replace professional medical advice — always recommend consulting a doctor for serious concerns
 - Be warm, empathetic, and patient-friendly
 - Keep responses concise and clear (3-5 sentences max unless more detail is needed)
+{db_context}
 {context_block}
 {lang_instruction}"""
 
@@ -673,9 +700,160 @@ Your role:
             max_tokens=600,
         )
         reply = response.choices[0].message.content.strip()
-        return {"response": reply}
+
+        if "[SOURCE_MEDLINEPLUS]" in reply:
+            source_badge = "medlineplus"
+            reply = reply.replace("[SOURCE_MEDLINEPLUS]", "").strip()
+        else:
+            source_badge = "ai_generated"
+            db_topic = None
+
+        return {
+            "response": reply,
+            "source": source_badge,
+            "medlineplus_topic": db_topic,
+            "ai_generated": (source_badge == "ai_generated"),
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI chat error: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
+# HEALTHCARE DATABASE ENDPOINTS (MedlinePlus)
+# ---------------------------------------------------------------------------
+
+class TranslateTopicRequest(BaseModel):
+    topic_id: str
+    target_lang: str
+
+
+@app.get("/api/health-db/search")
+def search_health_db(q: str, lang: str = "en"):
+    """Search MedlinePlus health database (with local caching)."""
+    return health_database.search_topics(query=q, language=lang)
+
+
+@app.get("/api/health-db/popular")
+def get_popular_health_topics(lang: str = "en"):
+    """Get popular pre-seeded health topics."""
+    topics = health_database.get_popular_topics(language=lang)
+    return {"topics": topics}
+
+
+@app.get("/api/health-db/topic/{topic_id}")
+def get_health_topic_detail(topic_id: str):
+    """Get full details of a specific cached health topic."""
+    topic = health_database.get_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail=f"Topic not found: {topic_id}")
+    return topic
+
+
+@app.post("/api/health-db/translate")
+def translate_health_topic(req: TranslateTopicRequest):
+    """Translate a single specific health topic on-demand into target_lang."""
+    translated = health_database.get_translated_topic(req.topic_id, req.target_lang)
+    if not translated:
+        raise HTTPException(status_code=404, detail=f"Topic not found: {req.topic_id}")
+    return translated
+
+
+# ---------------------------------------------------------------------------
+# MEDICATION REMINDERS ENDPOINTS
+# ---------------------------------------------------------------------------
+
+class CreateReminderRequest(BaseModel):
+    medicine_name: str
+    dosage: Optional[str] = ""
+    times: list[str]
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    frequency: Optional[str] = "daily"
+    patient_phone: Optional[str] = ""
+    caregiver_name: Optional[str] = ""
+    caregiver_phone: Optional[str] = ""
+    document_id: Optional[str] = None
+
+
+@app.post("/api/reminders")
+def create_medication_reminder(
+    req: CreateReminderRequest,
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Create a new medication reminder schedule."""
+    if not req.medicine_name or not req.medicine_name.strip():
+        raise HTTPException(status_code=400, detail="Medicine name is required.")
+    if not req.times:
+        raise HTTPException(status_code=400, detail="At least one reminder time is required.")
+
+    user_id = current_user["id"]
+    reminder = reminder_service.create_reminder(
+        user_id=user_id,
+        medicine_name=req.medicine_name.strip(),
+        dosage=req.dosage or "",
+        times=req.times,
+        start_date=req.start_date,
+        end_date=req.end_date,
+        frequency=req.frequency or "daily",
+        patient_phone=req.patient_phone or current_user.get("phone", ""),
+        caregiver_name=req.caregiver_name or "",
+        caregiver_phone=req.caregiver_phone or "",
+        document_id=req.document_id,
+    )
+    return reminder
+
+
+@app.get("/api/reminders")
+def list_medication_reminders(current_user: dict = Depends(auth.get_current_user)):
+    """List all active medication reminders for current user."""
+    reminders = reminder_service.list_reminders(current_user["id"])
+    return {"reminders": reminders}
+
+
+@app.delete("/api/reminders/{reminder_id}")
+def delete_medication_reminder(
+    reminder_id: str,
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Deactivate / delete a medication reminder."""
+    success = reminder_service.delete_reminder(reminder_id, current_user["id"])
+    if not success:
+        raise HTTPException(status_code=404, detail="Reminder not found.")
+    return {"message": "Reminder deleted successfully."}
+
+
+@app.get("/api/reminders/logs")
+def get_today_medication_logs(current_user: dict = Depends(auth.get_current_user)):
+    """Get today's dose schedule and status logs."""
+    logs = reminder_service.get_today_logs(current_user["id"])
+    return {"logs": logs}
+
+
+@app.post("/api/reminders/logs/{log_id}/take")
+def mark_dose_taken(
+    log_id: str,
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Mark a scheduled dose as taken."""
+    updated = reminder_service.mark_log_taken(log_id, current_user["id"])
+    if not updated:
+        raise HTTPException(status_code=404, detail="Log entry not found.")
+    return updated
+
+
+@app.post("/api/reminders/logs/{log_id}/snooze")
+def snooze_dose(
+    log_id: str,
+    minutes: int = 15,
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Snooze a dose by 15 minutes."""
+    updated = reminder_service.snooze_log(log_id, current_user["id"], minutes)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Log entry not found.")
+    return updated
+
+
 
 
 @app.post("/speech-to-text")

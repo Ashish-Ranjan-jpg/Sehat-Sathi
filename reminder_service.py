@@ -1,0 +1,408 @@
+"""
+reminder_service.py
+
+Medication Reminder System & Caregiver Alert Service.
+- Manages medication reminder schedules and daily dose logs.
+- Dispatches SMS/WhatsApp notifications via Twilio (with fallback simulation).
+- Monitors missed doses (15-min grace period) and automatically alerts Caregivers.
+"""
+
+import os
+import json
+import uuid
+import threading
+import time
+from datetime import datetime, timezone, timedelta
+import db_engine
+from dotenv import load_dotenv
+
+env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(env_file)
+
+# Grace period in minutes before a dose is marked as missed
+MISSED_GRACE_MINUTES = 15
+
+
+# ---------------------------------------------------------------------------
+# Database Initialization
+# ---------------------------------------------------------------------------
+
+def _init_reminder_db():
+    db_engine.execute(
+        """
+        CREATE TABLE IF NOT EXISTS medication_reminders (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            document_id TEXT,
+            medicine_name TEXT NOT NULL,
+            dosage TEXT,
+            frequency TEXT DEFAULT 'daily',
+            times TEXT NOT NULL,
+            start_date TEXT NOT NULL,
+            end_date TEXT,
+            patient_phone TEXT,
+            caregiver_name TEXT,
+            caregiver_phone TEXT,
+            status TEXT DEFAULT 'active',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
+    db_engine.execute(
+        """
+        CREATE TABLE IF NOT EXISTS medication_logs (
+            id TEXT PRIMARY KEY,
+            reminder_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            medicine_name TEXT NOT NULL,
+            dosage TEXT,
+            scheduled_time TEXT NOT NULL,
+            status TEXT DEFAULT 'scheduled',
+            notified_patient INT DEFAULT 0,
+            notified_caregiver INT DEFAULT 0,
+            action_time TEXT,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
+
+_init_reminder_db()
+
+
+# ---------------------------------------------------------------------------
+# Twilio Notification Engine
+# ---------------------------------------------------------------------------
+
+def _send_twilio_sms(to_phone, body_text):
+    """
+    Send an SMS or WhatsApp message via Twilio.
+    If Twilio credentials are missing in .env, fallback to clean console simulation.
+    """
+    account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    from_phone = os.environ.get("TWILIO_PHONE_NUMBER") or os.environ.get("TWILIO_WHATSAPP_NUMBER")
+
+    if account_sid and auth_token and from_phone:
+        try:
+            from twilio.rest import Client
+            client = Client(account_sid, auth_token)
+            message = client.messages.create(
+                body=body_text,
+                from_=from_phone,
+                to=to_phone
+            )
+            print(f"[TWILIO SUCCESS] Sent SMS to {to_phone} (SID: {message.sid})")
+            return True
+        except Exception as e:
+            print(f"[TWILIO ERROR] Failed to send SMS to {to_phone}: {e}")
+            return False
+    else:
+        # Fallback simulation mode
+        print("\n" + "=" * 60)
+        print(f"[TWILIO SIMULATION SMS -> {to_phone or 'Patient'}]")
+        print(f"Message: {body_text}")
+        print("=" * 60 + "\n")
+        return True
+
+
+def send_patient_reminder(medicine_name, dosage, time_str, patient_phone=None):
+    body = (
+        f"⏰ SEHAT SAATHI REMINDER: It's time to take your medication!\n"
+        f"• Medicine: {medicine_name}\n"
+        f"• Dosage: {dosage or 'As prescribed'}\n"
+        f"• Time: {time_str}\n"
+        f"Please log into Sehat Saathi to mark it as taken."
+    )
+    return _send_twilio_sms(patient_phone or "+15005550006", body)
+
+
+def send_caregiver_alert(medicine_name, dosage, scheduled_time_str, patient_name, caregiver_name, caregiver_phone):
+    body = (
+        f"🚨 SEHAT SAATHI MISSED DOSE ALERT!\n"
+        f"Dear {caregiver_name or 'Caregiver'},\n"
+        f"Patient {patient_name or 'Your relative'} has MISSED their scheduled dose:\n"
+        f"• Medicine: {medicine_name} ({dosage or 'As prescribed'})\n"
+        f"• Scheduled Time: {scheduled_time_str}\n"
+        f"Please check in with them to ensure their health and safety."
+    )
+    return _send_twilio_sms(caregiver_phone or "+15005550006", body)
+
+
+# ---------------------------------------------------------------------------
+# Schedule & Log Management
+# ---------------------------------------------------------------------------
+
+def create_reminder(user_id, medicine_name, dosage, times, start_date=None, end_date=None,
+                    frequency="daily", patient_phone=None, caregiver_name=None,
+                    caregiver_phone=None, document_id=None):
+    """Create a new medication reminder schedule."""
+    reminder_id = uuid.uuid4().hex[:12]
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    if isinstance(times, list):
+        times_json = json.dumps(times)
+    else:
+        times_json = json.dumps([t.strip() for t in str(times).split(",") if t.strip()])
+
+    if not start_date:
+        start_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    db_engine.execute(
+        """
+        INSERT INTO medication_reminders
+            (id, user_id, document_id, medicine_name, dosage, frequency, times,
+             start_date, end_date, patient_phone, caregiver_name, caregiver_phone,
+             status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
+        """,
+        (
+            reminder_id,
+            user_id,
+            document_id,
+            medicine_name,
+            dosage or "",
+            frequency,
+            times_json,
+            start_date,
+            end_date or "",
+            patient_phone or "",
+            caregiver_name or "",
+            caregiver_phone or "",
+            now_iso,
+        )
+    )
+
+    # Immediately generate today's dose logs for this reminder
+    _generate_dose_logs_for_reminder(reminder_id, user_id, medicine_name, dosage, json.loads(times_json))
+
+    return get_reminder(reminder_id)
+
+
+def get_reminder(reminder_id):
+    row = db_engine.fetchone("SELECT * FROM medication_reminders WHERE id = ?", (reminder_id,))
+    if row and isinstance(row.get("times"), str):
+        try:
+            row["times"] = json.loads(row["times"])
+        except Exception:
+            row["times"] = []
+    return row
+
+
+def list_reminders(user_id):
+    rows = db_engine.fetchall(
+        "SELECT * FROM medication_reminders WHERE user_id = ? ORDER BY created_at DESC",
+        (user_id,)
+    )
+    for r in rows:
+        if isinstance(r.get("times"), str):
+            try:
+                r["times"] = json.loads(r["times"])
+            except Exception:
+                r["times"] = []
+    return rows
+
+
+def delete_reminder(reminder_id, user_id):
+    db_engine.execute(
+        "DELETE FROM medication_reminders WHERE id = ? AND user_id = ?",
+        (reminder_id, user_id)
+    )
+    db_engine.execute(
+        "DELETE FROM medication_logs WHERE reminder_id = ?",
+        (reminder_id,)
+    )
+    return True
+
+
+def _generate_dose_logs_for_reminder(reminder_id, user_id, medicine_name, dosage, times_list):
+    """Generate log records for today's scheduled times if not already existing."""
+    now_local = datetime.now()
+    today_str = now_local.strftime("%Y-%m-%d")
+    now_iso = now_local.isoformat()
+
+    for time_str in times_list:
+        # Construct local ISO timestamp (without Z suffix) for exact local time display
+        scheduled_iso = f"{today_str}T{time_str}:00"
+
+        existing = db_engine.fetchone(
+            "SELECT * FROM medication_logs WHERE reminder_id = ? AND scheduled_time LIKE ?",
+            (reminder_id, f"{today_str}%{time_str}%")
+        )
+
+        if not existing:
+            log_id = uuid.uuid4().hex[:12]
+            db_engine.execute(
+                """
+                INSERT INTO medication_logs
+                    (id, reminder_id, user_id, medicine_name, dosage,
+                     scheduled_time, status, notified_patient, notified_caregiver, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'scheduled', 0, 0, ?)
+                """,
+                (log_id, reminder_id, user_id, medicine_name, dosage or "", scheduled_iso, now_iso)
+            )
+
+
+def get_today_logs(user_id):
+    """Get all dose logs scheduled for today for the user."""
+    today_prefix = datetime.now().strftime("%Y-%m-%d")
+    rows = db_engine.fetchall(
+        """
+        SELECT * FROM medication_logs
+        WHERE user_id = ? AND scheduled_time LIKE ?
+        ORDER BY scheduled_time ASC
+        """,
+        (user_id, f"{today_prefix}%")
+    )
+    return rows
+
+
+def mark_log_taken(log_id, user_id):
+    """Mark a dose as taken."""
+    now_iso = datetime.now().isoformat()
+    db_engine.execute(
+        """
+        UPDATE medication_logs
+        SET status = 'taken', action_time = ?
+        WHERE id = ? AND user_id = ?
+        """,
+        (now_iso, log_id, user_id)
+    )
+    return db_engine.fetchone("SELECT * FROM medication_logs WHERE id = ?", (log_id,))
+
+
+def snooze_log(log_id, user_id, minutes=15):
+    """Snooze a dose by shifting scheduled_time forward by X minutes."""
+    log = db_engine.fetchone("SELECT * FROM medication_logs WHERE id = ? AND user_id = ?", (log_id, user_id))
+    if not log:
+        return None
+
+    try:
+        sched_str = log["scheduled_time"].replace("Z", "")
+        sched_dt = datetime.fromisoformat(sched_str)
+        new_dt = sched_dt + timedelta(minutes=minutes)
+        new_iso = new_dt.isoformat()
+        db_engine.execute(
+            """
+            UPDATE medication_logs
+            SET scheduled_time = ?, status = 'snoozed', notified_patient = 0
+            WHERE id = ?
+            """,
+            (new_iso, log_id)
+        )
+        return db_engine.fetchone("SELECT * FROM medication_logs WHERE id = ?", (log_id,))
+    except Exception as e:
+        print(f"[reminder_service] Snooze error: {e}")
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Background Daemon Engine
+# ---------------------------------------------------------------------------
+
+def _run_reminder_daemon_tick():
+    """
+    Single tick of the background daemon:
+    1. Pre-generate today's dose logs for active reminders.
+    2. Dispatch patient SMS reminders for due doses.
+    3. Identify missed doses (>15 min overdue) and dispatch Caregiver alerts.
+    """
+    now_local = datetime.now()
+    today_str = now_local.strftime("%Y-%m-%d")
+
+    # 1. Pre-generate logs for active reminders
+    active_reminders = db_engine.fetchall("SELECT * FROM medication_reminders WHERE status = 'active'")
+    for rem in active_reminders:
+        times = rem.get("times", "[]")
+        if isinstance(times, str):
+            try:
+                times = json.loads(times)
+            except Exception:
+                times = []
+        _generate_dose_logs_for_reminder(
+            rem["id"], rem["user_id"], rem["medicine_name"], rem.get("dosage", ""), times
+        )
+
+    # 2. Check scheduled doses and send Patient SMS
+    pending_logs = db_engine.fetchall(
+        "SELECT * FROM medication_logs WHERE status IN ('scheduled', 'snoozed') AND notified_patient = 0"
+    )
+
+    for log in pending_logs:
+        try:
+            sched_str = log["scheduled_time"].replace("Z", "")
+            sched_dt = datetime.fromisoformat(sched_str)
+
+            # Send SMS if due within 2 minutes or overdue
+            if now_local >= sched_dt - timedelta(minutes=2):
+                rem = db_engine.fetchone("SELECT * FROM medication_reminders WHERE id = ?", (log["reminder_id"],))
+                patient_phone = rem.get("patient_phone") if rem else None
+                time_fmt = sched_dt.strftime("%I:%M %p")
+
+                send_patient_reminder(log["medicine_name"], log.get("dosage", ""), time_fmt, patient_phone)
+
+                db_engine.execute(
+                    "UPDATE medication_logs SET notified_patient = 1 WHERE id = ?", (log["id"],)
+                )
+        except Exception as e:
+            print(f"[daemon] Patient notification error: {e}")
+
+    # 3. Check for missed doses (>15 minutes past due) & send Caregiver alerts
+    overdue_logs = db_engine.fetchall(
+        "SELECT * FROM medication_logs WHERE status IN ('scheduled', 'snoozed')"
+    )
+
+    for log in overdue_logs:
+        try:
+            sched_str = log["scheduled_time"].replace("Z", "")
+            sched_dt = datetime.fromisoformat(sched_str)
+
+            # If overdue past grace period (15 mins)
+            if now_local > sched_dt + timedelta(minutes=MISSED_GRACE_MINUTES):
+                db_engine.execute(
+                    "UPDATE medication_logs SET status = 'missed' WHERE id = ?", (log["id"],)
+                )
+
+                # Send Caregiver Alert if caregiver phone provided and not notified yet
+                if log.get("notified_caregiver", 0) == 0:
+                    rem = db_engine.fetchone("SELECT * FROM medication_reminders WHERE id = ?", (log["reminder_id"],))
+                    if rem and rem.get("caregiver_phone"):
+                        user_row = db_engine.fetchone("SELECT name FROM users WHERE id = ?", (log["user_id"],))
+                        patient_name = user_row.get("name", "Patient") if user_row else "Patient"
+                        time_fmt = sched_dt.strftime("%I:%M %p")
+
+                        send_caregiver_alert(
+                            medicine_name=log["medicine_name"],
+                            dosage=log.get("dosage", ""),
+                            scheduled_time_str=time_fmt,
+                            patient_name=patient_name,
+                            caregiver_name=rem.get("caregiver_name", "Caregiver"),
+                            caregiver_phone=rem.get("caregiver_phone", "")
+                        )
+
+                    db_engine.execute(
+                        "UPDATE medication_logs SET notified_caregiver = 1 WHERE id = ?", (log["id"],)
+                    )
+        except Exception as e:
+            print(f"[daemon] Caregiver alert error: {e}")
+
+
+def _daemon_loop():
+    print("[reminder_service] Medication Reminder & Caregiver Alert daemon started.")
+    while True:
+        try:
+            _run_reminder_daemon_tick()
+        except Exception as e:
+            print(f"[reminder_service] Daemon tick error: {e}")
+        time.sleep(30)
+
+
+_daemon_thread = None
+
+
+def start_reminder_daemon():
+    global _daemon_thread
+    if _daemon_thread is None or not _daemon_thread.is_alive():
+        _daemon_thread = threading.Thread(target=_daemon_loop, daemon=True)
+        _daemon_thread.start()
