@@ -321,6 +321,37 @@ export const api = {
       });
     },
   },
+
+  // In-App Notifications
+  notifications: {
+    async list(limit = 50) {
+      return await request(`/api/notifications?limit=${limit}`);
+    },
+
+    async markRead(id) {
+      return await request(`/api/notifications/${id}/read`, {
+        method: "POST",
+      });
+    },
+
+    async markAllRead() {
+      return await request("/api/notifications/read-all", {
+        method: "POST",
+      });
+    },
+
+    async delete(id) {
+      return await request(`/api/notifications/${id}`, {
+        method: "DELETE",
+      });
+    },
+
+    async clearAll() {
+      return await request("/api/notifications", {
+        method: "DELETE",
+      });
+    },
+  },
 };
 
 

@@ -1037,6 +1037,353 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
 }
 
 // ---------------------------------------------------------------------------
+// IN-APP NOTIFICATION BELL & DROPDOWN DRAWER
+// ---------------------------------------------------------------------------
+
+function playNotificationChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.35);
+  } catch (e) {
+    // AudioContext autoplay restriction safeguard
+  }
+}
+
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return "";
+  try {
+    const cleanStr = dateStr.replace("Z", "");
+    const date = new Date(cleanStr);
+    const now = new Date();
+    const diffSec = Math.floor((now - date) / 1000);
+    if (isNaN(diffSec) || diffSec < 0) return "Just now";
+    if (diffSec < 30) return "Just now";
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    return `${diffDay}d ago`;
+  } catch (e) {
+    return dateStr;
+  }
+}
+
+function NotificationBellDrawer({ onNav }) {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [filter, setFilter] = useState("all");
+  const [loading, setLoading] = useState(false);
+  const prevUnreadRef = useRef(0);
+  const drawerRef = useRef(null);
+
+  const fetchNotifications = useCallback(async (isInitial = false) => {
+    try {
+      if (isInitial) setLoading(true);
+      const res = await api.notifications.list(50);
+      const list = res.notifications || [];
+      const newUnread = res.unread_count || 0;
+
+      // Check if unread count increased -> trigger audio chime and toast
+      if (!isInitial && newUnread > prevUnreadRef.current) {
+        playNotificationChime();
+        const latest = list[0];
+        if (latest && !latest.is_read) {
+          toast(`${latest.title}: ${latest.message}`);
+        }
+      }
+
+      prevUnreadRef.current = newUnread;
+      setNotifications(list);
+      setUnreadCount(newUnread);
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    } finally {
+      if (isInitial) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications(true);
+
+    // Poll for new notifications every 10 seconds
+    const interval = setInterval(() => {
+      fetchNotifications(false);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  // Close popover when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (drawerRef.current && !drawerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  async function handleMarkRead(id, e) {
+    if (e) e.stopPropagation();
+    try {
+      await api.notifications.markRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, is_read: 1 } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      prevUnreadRef.current = Math.max(0, prevUnreadRef.current - 1);
+    } catch (err) {
+      toast("Failed to mark notification as read", "error");
+    }
+  }
+
+  async function handleMarkAllRead() {
+    try {
+      await api.notifications.markAllRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
+      setUnreadCount(0);
+      prevUnreadRef.current = 0;
+      toast("All notifications marked as read");
+    } catch (err) {
+      toast("Failed to mark all as read", "error");
+    }
+  }
+
+  async function handleClearAll() {
+    showConfirm({
+      title: "Clear all notifications?",
+      message: "Are you sure you want to delete all in-app notifications?",
+      danger: true,
+      confirmLabel: "Clear All",
+      onConfirm: async () => {
+        try {
+          await api.notifications.clearAll();
+          setNotifications([]);
+          setUnreadCount(0);
+          prevUnreadRef.current = 0;
+          toast("Cleared all notifications");
+        } catch (err) {
+          toast("Failed to clear notifications", "error");
+        }
+      },
+    });
+  }
+
+  async function handleDeleteSingle(id, e) {
+    if (e) e.stopPropagation();
+    try {
+      const target = notifications.find((n) => n.id === id);
+      await api.notifications.delete(id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      if (target && !target.is_read) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+        prevUnreadRef.current = Math.max(0, prevUnreadRef.current - 1);
+      }
+    } catch (err) {
+      toast("Failed to delete notification", "error");
+    }
+  }
+
+  const filteredItems = notifications.filter((n) => {
+    if (filter === "unread") return n.is_read === 0;
+    return true;
+  });
+
+  return (
+    <div className="notif-bell-wrapper" ref={drawerRef}>
+      <button
+        type="button"
+        className={`notif-bell-btn ${unreadCount > 0 ? "has-unread" : ""}`}
+        onClick={() => setIsOpen((prev) => !prev)}
+        title={`Notifications (${unreadCount} unread)`}
+        aria-label={`Notifications (${unreadCount} unread)`}
+      >
+        <Bell size={18} strokeWidth={2} />
+        {unreadCount > 0 && (
+          <span className="notif-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="notif-popover">
+          <div className="notif-popover__header">
+            <div className="notif-popover__title">
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Bell size={16} color="var(--teal)" />
+                <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Notifications</h4>
+              </div>
+              {unreadCount > 0 && (
+                <span className="badge badge--teal" style={{ fontSize: 11, padding: "2px 8px" }}>
+                  {unreadCount} new
+                </span>
+              )}
+            </div>
+            <div className="notif-popover__actions">
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  className="btn-icon-subtle"
+                  onClick={handleMarkAllRead}
+                  title="Mark all as read"
+                >
+                  <Check size={14} />
+                  <span style={{ fontSize: 11 }}>Read All</span>
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  type="button"
+                  className="btn-icon-subtle danger"
+                  onClick={handleClearAll}
+                  title="Clear all notifications"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-icon-subtle"
+                onClick={() => setIsOpen(false)}
+                title="Close"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+
+          <div className="notif-popover__tabs">
+            <button
+              className={`notif-tab ${filter === "all" ? "active" : ""}`}
+              onClick={() => setFilter("all")}
+            >
+              All ({notifications.length})
+            </button>
+            <button
+              className={`notif-tab ${filter === "unread" ? "active" : ""}`}
+              onClick={() => setFilter("unread")}
+            >
+              Unread ({unreadCount})
+            </button>
+          </div>
+
+          <div className="notif-popover__list">
+            {loading ? (
+              <div className="notif-empty">
+                <Loader2 size={18} className="spin" color="var(--ink-soft)" />
+                <p>Loading notifications...</p>
+              </div>
+            ) : filteredItems.length === 0 ? (
+              <div className="notif-empty">
+                <Bell size={28} color="var(--ink-faint)" />
+                <p style={{ margin: 0, fontWeight: 500, color: "var(--ink-soft)" }}>
+                  {filter === "unread" ? "No unread notifications" : "No notifications yet"}
+                </p>
+                <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>
+                  Medication reminders and dose alerts will appear here.
+                </span>
+              </div>
+            ) : (
+              filteredItems.map((item) => {
+                const isUnread = item.is_read === 0;
+                let notifIcon = <Pill size={16} color="var(--teal)" />;
+                let iconBg = "rgba(58, 107, 99, 0.12)";
+
+                if (item.type === "missed") {
+                  notifIcon = <AlertTriangle size={16} color="var(--brick)" />;
+                  iconBg = "rgba(166, 80, 63, 0.12)";
+                } else if (item.type === "system") {
+                  notifIcon = <AlarmClock size={16} color="var(--gold)" />;
+                  iconBg = "rgba(185, 129, 42, 0.12)";
+                }
+
+                return (
+                  <div
+                    key={item.id}
+                    className={`notif-item ${isUnread ? "notif-item--unread" : ""}`}
+                    onClick={() => {
+                      if (isUnread) handleMarkRead(item.id);
+                    }}
+                  >
+                    <div className="notif-item__icon-wrap" style={{ background: iconBg }}>
+                      {notifIcon}
+                    </div>
+
+                    <div className="notif-item__body">
+                      <div className="notif-item__top">
+                        <strong className="notif-item__title">{item.title}</strong>
+                        <span className="notif-item__time">{formatRelativeTime(item.created_at)}</span>
+                      </div>
+                      <p className="notif-item__msg">{item.message}</p>
+
+                      <div className="notif-item__footer">
+                        {onNav && (
+                          <button
+                            type="button"
+                            className="notif-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isUnread) handleMarkRead(item.id);
+                              onNav("reminders");
+                              setIsOpen(false);
+                            }}
+                          >
+                            Go to Reminders <ChevronRight size={12} />
+                          </button>
+                        )}
+                        <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+                          {isUnread && (
+                            <button
+                              type="button"
+                              className="notif-mini-btn"
+                              onClick={(e) => handleMarkRead(item.id, e)}
+                              title="Mark as read"
+                            >
+                              <Check size={12} /> Mark read
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="notif-mini-btn danger"
+                            onClick={(e) => handleDeleteSingle(item.id, e)}
+                            title="Delete notification"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isUnread && <span className="notif-unread-dot" />}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // APP SHELL
 // ---------------------------------------------------------------------------
 
@@ -1099,6 +1446,7 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
           <BrandMark />
         </div>
         <div className="mobile-topbar__actions">
+          <NotificationBellDrawer onNav={onNav} />
           {userName && (
             <div className="sidebar-avatar" style={{ width: 30, height: 30, fontSize: 11 }}>
               {initials}
@@ -1173,7 +1521,8 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
             <h1>{title}</h1>
             {subtitle && <p>{subtitle}</p>}
           </div>
-          <div className="topbar__actions">
+          <div className="topbar__actions" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <NotificationBellDrawer onNav={onNav} />
             <button
               type="button"
               className="btn btn--secondary mobile-logout-btn"

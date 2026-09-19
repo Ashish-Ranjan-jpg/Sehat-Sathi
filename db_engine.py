@@ -17,8 +17,20 @@ _write_lock = threading.Lock()
 DB_PATH = "documents.db"
 
 
+_has_postgres_driver = None
+
 def is_postgres():
-    return bool(os.environ.get("DATABASE_URL"))
+    global _has_postgres_driver
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        return False
+    if _has_postgres_driver is None:
+        try:
+            import psycopg2
+            _has_postgres_driver = True
+        except ImportError:
+            _has_postgres_driver = False
+    return _has_postgres_driver
 
 
 def _get_connection_string():
@@ -44,20 +56,24 @@ def _get_connection_string():
 def get_db():
     url = _get_connection_string()
     if url:
-        import psycopg2
-        from psycopg2.extras import RealDictCursor
-        conn = psycopg2.connect(url, cursor_factory=RealDictCursor)
         try:
-            yield conn
-        finally:
-            conn.close()
-    else:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        try:
-            yield conn
-        finally:
-            conn.close()
+            import psycopg2
+            from psycopg2.extras import RealDictCursor
+            conn = psycopg2.connect(url, cursor_factory=RealDictCursor)
+            try:
+                yield conn
+            finally:
+                conn.close()
+            return
+        except ImportError:
+            pass
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def _format_sql(sql: str) -> str:

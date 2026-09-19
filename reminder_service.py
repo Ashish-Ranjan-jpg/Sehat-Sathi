@@ -67,6 +67,21 @@ def _init_reminder_db():
         """
     )
 
+    db_engine.execute(
+        """
+        CREATE TABLE IF NOT EXISTS in_app_notifications (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            type TEXT DEFAULT 'medication',
+            is_read INT DEFAULT 0,
+            related_id TEXT,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
 
 _init_reminder_db()
 
@@ -175,9 +190,88 @@ def create_reminder(user_id, medicine_name, dosage, times, start_date=None, end_
     )
 
     # Immediately generate today's dose logs for this reminder
-    _generate_dose_logs_for_reminder(reminder_id, user_id, medicine_name, dosage, json.loads(times_json))
+    parsed_times = json.loads(times_json)
+    _generate_dose_logs_for_reminder(reminder_id, user_id, medicine_name, dosage, parsed_times)
+
+    # Dispatch in-app notification for newly scheduled reminder
+    time_str = ", ".join(parsed_times) if isinstance(parsed_times, list) else str(parsed_times)
+    create_in_app_notification(
+        user_id=user_id,
+        title=f"⏰ Reminder Scheduled: {medicine_name}",
+        message=f"Medication reminder set for {medicine_name} ({dosage or 'As prescribed'}) at {time_str}.",
+        notif_type="system",
+        related_id=reminder_id
+    )
 
     return get_reminder(reminder_id)
+
+
+# ---------------------------------------------------------------------------
+# In-App Notification Service Methods
+# ---------------------------------------------------------------------------
+
+def create_in_app_notification(user_id, title, message, notif_type="medication", related_id=None):
+    """Create a persistent in-app notification for the specified user."""
+    notif_id = uuid.uuid4().hex[:12]
+    now_iso = datetime.now().isoformat()
+    db_engine.execute(
+        """
+        INSERT INTO in_app_notifications (id, user_id, title, message, type, is_read, related_id, created_at)
+        VALUES (?, ?, ?, ?, ?, 0, ?, ?)
+        """,
+        (notif_id, user_id, title, message, notif_type, related_id, now_iso)
+    )
+    return db_engine.fetchone("SELECT * FROM in_app_notifications WHERE id = ?", (notif_id,))
+
+
+def get_user_notifications(user_id, limit=50):
+    """Retrieve all in-app notifications for the user ordered by creation date."""
+    rows = db_engine.fetchall(
+        "SELECT * FROM in_app_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+        (user_id, limit)
+    )
+    unread_row = db_engine.fetchone(
+        "SELECT COUNT(*) as count FROM in_app_notifications WHERE user_id = ? AND is_read = 0",
+        (user_id,)
+    )
+    unread_count = unread_row["count"] if unread_row else 0
+    return {"notifications": rows, "unread_count": unread_count}
+
+
+def mark_notification_as_read(notification_id, user_id):
+    """Mark a single notification as read."""
+    db_engine.execute(
+        "UPDATE in_app_notifications SET is_read = 1 WHERE id = ? AND user_id = ?",
+        (notification_id, user_id)
+    )
+    return True
+
+
+def mark_all_notifications_as_read(user_id):
+    """Mark all notifications as read for the user."""
+    db_engine.execute(
+        "UPDATE in_app_notifications SET is_read = 1 WHERE user_id = ?",
+        (user_id,)
+    )
+    return True
+
+
+def delete_notification(notification_id, user_id):
+    """Delete a single notification."""
+    db_engine.execute(
+        "DELETE FROM in_app_notifications WHERE id = ? AND user_id = ?",
+        (notification_id, user_id)
+    )
+    return True
+
+
+def clear_all_notifications(user_id):
+    """Delete all notifications for the user."""
+    db_engine.execute(
+        "DELETE FROM in_app_notifications WHERE user_id = ?",
+        (user_id,)
+    )
+    return True
 
 
 def get_reminder(reminder_id):
@@ -342,6 +436,16 @@ def _run_reminder_daemon_tick():
 
                 send_patient_reminder(log["medicine_name"], log.get("dosage", ""), time_fmt, patient_phone)
 
+                # Create in-app notification for patient
+                dosage_text = f" ({log.get('dosage')})" if log.get('dosage') else ""
+                create_in_app_notification(
+                    user_id=log["user_id"],
+                    title=f"💊 Medication Reminder: {log['medicine_name']}",
+                    message=f"It's time to take your dose of {log['medicine_name']}{dosage_text} scheduled for {time_fmt}.",
+                    notif_type="medication",
+                    related_id=log["id"]
+                )
+
                 db_engine.execute(
                     "UPDATE medication_logs SET notified_patient = 1 WHERE id = ?", (log["id"],)
                 )
@@ -364,13 +468,24 @@ def _run_reminder_daemon_tick():
                     "UPDATE medication_logs SET status = 'missed' WHERE id = ?", (log["id"],)
                 )
 
+                dosage_text = f" ({log.get('dosage')})" if log.get('dosage') else ""
+                time_fmt = sched_dt.strftime("%I:%M %p")
+
+                # Create in-app missed dose notification for patient
+                create_in_app_notification(
+                    user_id=log["user_id"],
+                    title=f"⚠️ Missed Dose Alert: {log['medicine_name']}",
+                    message=f"You missed your scheduled dose of {log['medicine_name']}{dosage_text} at {time_fmt}. Caregiver alert dispatched.",
+                    notif_type="missed",
+                    related_id=log["id"]
+                )
+
                 # Send Caregiver Alert if caregiver phone provided and not notified yet
                 if log.get("notified_caregiver", 0) == 0:
                     rem = db_engine.fetchone("SELECT * FROM medication_reminders WHERE id = ?", (log["reminder_id"],))
                     if rem and rem.get("caregiver_phone"):
                         user_row = db_engine.fetchone("SELECT name FROM users WHERE id = ?", (log["user_id"],))
                         patient_name = user_row.get("name", "Patient") if user_row else "Patient"
-                        time_fmt = sched_dt.strftime("%I:%M %p")
 
                         send_caregiver_alert(
                             medicine_name=log["medicine_name"],

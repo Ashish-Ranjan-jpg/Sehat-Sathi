@@ -854,6 +854,58 @@ def snooze_dose(
     return updated
 
 
+# ---------------------------------------------------------------------------
+# In-App Notifications API Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/notifications")
+def get_user_notifications(
+    limit: int = 50,
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Fetch recent in-app notifications and unread count for current user."""
+    return reminder_service.get_user_notifications(current_user["id"], limit)
+
+
+@app.post("/api/notifications/{notification_id}/read")
+def mark_notification_read(
+    notification_id: str,
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Mark a specific in-app notification as read."""
+    reminder_service.mark_notification_as_read(notification_id, current_user["id"])
+    return {"message": "Notification marked as read."}
+
+
+@app.post("/api/notifications/read-all")
+def mark_all_notifications_read(
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Mark all in-app notifications for current user as read."""
+    reminder_service.mark_all_notifications_as_read(current_user["id"])
+    return {"message": "All notifications marked as read."}
+
+
+@app.delete("/api/notifications/{notification_id}")
+def delete_notification(
+    notification_id: str,
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Delete a single in-app notification."""
+    reminder_service.delete_notification(notification_id, current_user["id"])
+    return {"message": "Notification deleted."}
+
+
+@app.delete("/api/notifications")
+def clear_all_notifications(
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Clear all in-app notifications for current user."""
+    reminder_service.clear_all_notifications(current_user["id"])
+    return {"message": "All notifications cleared."}
+
+
+
 
 
 @app.post("/speech-to-text")
