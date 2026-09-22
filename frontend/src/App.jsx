@@ -71,6 +71,62 @@ import {
   AlarmClock,
 } from "lucide-react";
 import { api, getToken, clearToken } from "./api";
+import { SUPPORTED_LANGUAGES, t as translate } from "./i18n";
+
+// ---------------------------------------------------------------------------
+// GLOBAL LANGUAGE CONTEXT & SELECTOR
+// ---------------------------------------------------------------------------
+
+export const LanguageContext = React.createContext({
+  language: "hi",
+  setLanguage: () => {},
+  t: (key) => translate(key, "hi"),
+});
+
+export function useAppLanguage() {
+  return React.useContext(LanguageContext);
+}
+
+function LanguageSelector({ compact = false }) {
+  const { language, setLanguage } = useAppLanguage();
+
+  return (
+    <div className={`lang-selector-wrap ${compact ? "lang-selector--compact" : ""}`}>
+      <Globe size={compact ? 13 : 15} className="lang-globe-icon" />
+      <select
+        value={language}
+        onChange={(e) => setLanguage(e.target.value)}
+        className="lang-select-dropdown"
+        title="Select App Language / भाषा चुनें"
+      >
+        {SUPPORTED_LANGUAGES.map((l) => (
+          <option key={l.code} value={l.code}>
+            {l.flag} {l.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// Supported languages matching pipeline codes
+const LANGUAGES = SUPPORTED_LANGUAGES;
+
+function getLanguageName(codeOrName) {
+  if (!codeOrName) return "Hindi";
+  const found = LANGUAGES.find(
+    (l) => l.code.toLowerCase() === codeOrName.toLowerCase() || l.name.toLowerCase() === codeOrName.toLowerCase()
+  );
+  return found ? found.name : codeOrName;
+}
+
+function getLanguageCode(codeOrName) {
+  if (!codeOrName) return "hi";
+  const found = LANGUAGES.find(
+    (l) => l.code.toLowerCase() === codeOrName.toLowerCase() || l.name.toLowerCase() === codeOrName.toLowerCase()
+  );
+  return found ? found.code : "hi";
+}
 
 // ---------------------------------------------------------------------------
 // GLOBAL TOAST + CONFIRM SYSTEM
@@ -93,36 +149,6 @@ function showConfirm({ title, message, onConfirm, confirmLabel = "Confirm", dang
   if (_setConfirmState) {
     _setConfirmState({ open: true, title, message, onConfirm, confirmLabel, danger });
   }
-}
-
-// Supported languages matching pipeline codes
-const LANGUAGES = [
-  { code: "hi", name: "Hindi" },
-  { code: "en", name: "English" },
-  { code: "bn", name: "Bengali" },
-  { code: "ta", name: "Tamil" },
-  { code: "te", name: "Telugu" },
-  { code: "mr", name: "Marathi" },
-  { code: "gu", name: "Gujarati" },
-  { code: "kn", name: "Kannada" },
-  { code: "pa", name: "Punjabi" },
-  { code: "ur", name: "Urdu" },
-];
-
-function getLanguageName(codeOrName) {
-  if (!codeOrName) return "Hindi";
-  const found = LANGUAGES.find(
-    (l) => l.code.toLowerCase() === codeOrName.toLowerCase() || l.name.toLowerCase() === codeOrName.toLowerCase()
-  );
-  return found ? found.name : codeOrName;
-}
-
-function getLanguageCode(codeOrName) {
-  if (!codeOrName) return "hi";
-  const found = LANGUAGES.find(
-    (l) => l.code.toLowerCase() === codeOrName.toLowerCase() || l.name.toLowerCase() === codeOrName.toLowerCase()
-  );
-  return found ? found.code : "hi";
 }
 
 // ---------------------------------------------------------------------------
@@ -383,6 +409,7 @@ function Field({ label, hint, children }) {
 
 function LandingScreen({ onGoLogin, onGoRegister }) {
   const cardsRef = useRef([]);
+  const { t } = useAppLanguage();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -406,9 +433,9 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
   const features = [
     {
       id: "ocr",
-      badge: "AI Extraction",
-      title: "Prescription & Report OCR",
-      text: "Scan or upload any handwritten or printed prescription, diagnostic report, or discharge summary. Our system extracts medicine names, dosages, and diagnostic insights instantly.",
+      badge: t("landing.smartOCRTitle"),
+      title: t("landing.smartOCRTitle"),
+      text: t("landing.smartOCRText"),
       icon: <FileText size={20} />,
       imageSrc: "/images/landing-ocr.jpg",
       tags: ["Prescriptions", "Lab Reports", "Discharge Summaries"],
@@ -425,8 +452,8 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
     {
       id: "audio",
       badge: "Voice & Audio",
-      title: "Spoken Regional Audio",
-      text: "Listen to prescription explanations spoken naturally in native regional languages including Hindi, Tamil, Telugu, Marathi, and Gujarati for maximum accessibility.",
+      title: t("landing.audioAssistanceTitle"),
+      text: t("landing.audioAssistanceText"),
       icon: <Volume2 size={20} />,
       imageSrc: "/images/landing-audio.jpg",
       tags: ["Text-to-Speech", "Native Dialects", "Accessible Audio"],
@@ -450,16 +477,17 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
           <BrandMark />
         </div>
         <ul className="landing-nav__links">
-          <li><a href="#features">Features</a></li>
-          <li><a href="#how-it-works">How It Works</a></li>
-          <li><a href="#about">About</a></li>
+          <li><a href="#features">{t("nav.healthLibrary")}</a></li>
+          <li><a href="#how-it-works">{t("landing.howItWorks")}</a></li>
+          <li><a href="#about">{t("nav.overview")}</a></li>
         </ul>
-        <div className="landing-nav__actions">
+        <div className="landing-nav__actions" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <LanguageSelector />
           <button className="btn btn--secondary" onClick={onGoLogin} style={{ padding: "8px 16px", fontSize: 13 }}>
-            Log in
+            {t("nav.login")}
           </button>
           <button className="btn btn--primary" onClick={onGoRegister} style={{ padding: "8px 18px", fontSize: 13 }}>
-            Get started <ArrowLeft size={14} style={{ transform: "rotate(180deg)", verticalAlign: "middle", marginLeft: 4 }} />
+            {t("landing.getStarted")} <ArrowLeft size={14} style={{ transform: "rotate(180deg)", verticalAlign: "middle", marginLeft: 4 }} />
           </button>
         </div>
       </nav>
@@ -468,20 +496,20 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
       <section className="landing-hero">
         <div>
           <div className="landing-hero__badge">
-            <Sparkles size={14} /> AI-Powered Health Assistance
+            <Sparkles size={14} /> {t("landing.badge")}
           </div>
           <h1 className="landing-hero__title">
-            Medical prescriptions & reports, <span>simplified in your language.</span>
+            {t("landing.heroTitle")}
           </h1>
           <p className="landing-hero__subtitle">
-            Upload any medical prescription, report, or discharge summary and receive instant plain-language explanations and spoken audio in local languages.
+            {t("landing.heroSubtitle")}
           </p>
           <div className="landing-hero__cta">
             <button className="btn btn--primary" onClick={onGoRegister} style={{ padding: "12px 24px", fontSize: 15 }}>
-              Get started now
+              {t("landing.getStarted")}
             </button>
             <button className="btn btn--secondary" onClick={onGoLogin} style={{ padding: "12px 20px", fontSize: 15 }}>
-              Log in to your account
+              {t("landing.loginNow")}
             </button>
           </div>
         </div>
@@ -512,29 +540,29 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
           <div className="landing-trust-item">
             <div className="landing-trust-icon"><FileText size={20} /></div>
             <div className="landing-trust-text">
-              <h4>Smart Extraction</h4>
-              <p>Handwritten & printed OCR</p>
+              <h4>{t("landing.smartOCRTitle")}</h4>
+              <p>{t("landing.smartOCRText")}</p>
             </div>
           </div>
           <div className="landing-trust-item">
             <div className="landing-trust-icon"><Globe size={20} /></div>
             <div className="landing-trust-text">
-              <h4>Multi-lingual</h4>
-              <p>10+ Indian regional languages</p>
+              <h4>{t("landing.multilingualTitle")}</h4>
+              <p>{t("landing.multilingualText")}</p>
             </div>
           </div>
           <div className="landing-trust-item">
             <div className="landing-trust-icon"><Volume2 size={20} /></div>
             <div className="landing-trust-text">
-              <h4>Audio Assistance</h4>
-              <p>Natural text-to-speech audio</p>
+              <h4>{t("landing.audioAssistanceTitle")}</h4>
+              <p>{t("landing.audioAssistanceText")}</p>
             </div>
           </div>
           <div className="landing-trust-item">
             <div className="landing-trust-icon"><ShieldCheck size={20} /></div>
             <div className="landing-trust-text">
-              <h4>Verified Access</h4>
-              <p>Patient & Worker portals</p>
+              <h4>{t("landing.reminderSystemTitle")}</h4>
+              <p>{t("landing.reminderSystemText")}</p>
             </div>
           </div>
         </div>
@@ -543,10 +571,10 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
       {/* Scroll-Unfolding Features Section */}
       <section id="features" className="landing-section">
         <div className="landing-section__header">
-          <span className="landing-section__badge">Key Capabilities</span>
-          <h2 className="landing-section__title">Designed for Patients & Healthcare Workers</h2>
+          <span className="landing-section__badge">{t("landing.badge")}</span>
+          <h2 className="landing-section__title">{t("landing.featuresTitle")}</h2>
           <p className="landing-section__subtitle">
-            Explore how Sehat Saathi bridges language barriers and medical complexity with cutting-edge AI.
+            {t("landing.featuresSubtitle")}
           </p>
         </div>
 
@@ -584,13 +612,6 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
                 </div>
                 <h3 className="unfold-card__title">{f.title}</h3>
                 <p className="unfold-card__text">{f.text}</p>
-                <div className="unfold-card__tags">
-                  {f.tags.map((t) => (
-                    <span key={t} className="badge badge--teal" style={{ background: "var(--paper-deep)", color: "var(--ink-soft)" }}>
-                      {t}
-                    </span>
-                  ))}
-                </div>
               </div>
             </div>
           ))}
@@ -600,8 +621,8 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
       {/* How It Works Section */}
       <section id="how-it-works" className="landing-section" style={{ background: "var(--panel)", borderTop: "1px solid var(--border-soft)" }}>
         <div className="landing-section__header">
-          <span className="landing-section__badge">Simple 3-Step Process</span>
-          <h2 className="landing-section__title">How Sehat Saathi Works</h2>
+          <span className="landing-section__badge">{t("landing.howItWorks")}</span>
+          <h2 className="landing-section__title">{t("landing.howItWorks")}</h2>
           <p className="landing-section__subtitle">
             From document capture to translated audio explanations in seconds.
           </p>
@@ -610,39 +631,39 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
         <div className="workflow-grid">
           <div className="workflow-card">
             <div className="workflow-card__number">1</div>
-            <h3 className="workflow-card__title">Upload Document</h3>
+            <h3 className="workflow-card__title">{t("landing.step1Title")}</h3>
             <p className="workflow-card__text">
-              Snap a photo with your device camera or upload a PDF/Image of your prescription or diagnostic report.
+              {t("landing.step1Text")}
             </p>
           </div>
           <div className="workflow-card">
             <div className="workflow-card__number">2</div>
-            <h3 className="workflow-card__title">AI Extraction</h3>
+            <h3 className="workflow-card__title">{t("landing.step2Title")}</h3>
             <p className="workflow-card__text">
-              Our vision AI analyzes raw text, identifies medication names, dosage timings, and translates key insights.
+              {t("landing.step2Text")}
             </p>
           </div>
           <div className="workflow-card">
             <div className="workflow-card__number">3</div>
-            <h3 className="workflow-card__title">Read or Listen</h3>
+            <h3 className="workflow-card__title">{t("landing.step3Title")}</h3>
             <p className="workflow-card__text">
-              View simplified bullet points in your preferred language or tap to hear natural spoken audio playback.
+              {t("landing.step3Text")}
             </p>
           </div>
         </div>
 
         {/* CTA Banner */}
         <div id="about" className="landing-cta-banner">
-          <h2>Ready to simplify your medical prescriptions?</h2>
+          <h2>{t("landing.ctaTitle")}</h2>
           <p>
-            Join thousands of patients and healthcare staff making medical records clear and accessible to everyone.
+            {t("landing.ctaSubtitle")}
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
             <button className="btn btn--primary" onClick={onGoRegister} style={{ padding: "12px 28px", fontSize: 15 }}>
-              Create a free account
+              {t("nav.createAccount")}
             </button>
             <button className="btn btn--secondary" onClick={onGoLogin} style={{ padding: "12px 24px", fontSize: 15, background: "rgba(255,255,255,0.15)", color: "#FFFFFF", borderColor: "rgba(255,255,255,0.3)" }}>
-              Log in
+              {t("nav.login")}
             </button>
           </div>
         </div>
@@ -666,6 +687,7 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
 // ---------------------------------------------------------------------------
 
 function LoginScreen({ onLoginSuccess, onGoRegister, onGoLanding }) {
+  const { t } = useAppLanguage();
   const [role, setRole] = useState("patient");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -731,21 +753,21 @@ function LoginScreen({ onLoginSuccess, onGoRegister, onGoLanding }) {
               className={role === "patient" ? "active" : ""}
               onClick={() => setRole("patient")}
             >
-              Patient
+              {t("role.patient")}
             </button>
             <button
               type="button"
               className={role === "healthcare_worker" ? "active" : ""}
               onClick={() => setRole("healthcare_worker")}
             >
-              Health worker
+              {t("role.worker")}
             </button>
             <button
               type="button"
               className={role === "admin" ? "active" : ""}
               onClick={() => setRole("admin")}
             >
-              Admin
+              {t("role.admin")}
             </button>
           </div>
 
@@ -767,7 +789,7 @@ function LoginScreen({ onLoginSuccess, onGoRegister, onGoLanding }) {
             />
 
             <button type="submit" className="btn btn--primary btn--block" disabled={loading} style={{ marginTop: 12 }}>
-              {loading ? <span className="spinner" /> : "Log in"}
+              {loading ? <span className="spinner" /> : t("nav.login")}
             </button>
           </form>
 
@@ -784,6 +806,7 @@ function LoginScreen({ onLoginSuccess, onGoRegister, onGoLanding }) {
 }
 
 function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
+  const { t } = useAppLanguage();
   const [role, setRole] = useState("patient");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -1090,6 +1113,7 @@ function NotificationBellDrawer({ onNav }) {
   const [loading, setLoading] = useState(false);
   const prevUnreadRef = useRef(0);
   const drawerRef = useRef(null);
+  const { t } = useAppLanguage();
 
   const fetchNotifications = useCallback(async (isInitial = false) => {
     try {
@@ -1228,7 +1252,7 @@ function NotificationBellDrawer({ onNav }) {
             <div className="notif-popover__title">
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <Bell size={16} color="var(--teal)" />
-                <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Notifications</h4>
+                <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{t("notif.title")}</h4>
               </div>
               {unreadCount > 0 && (
                 <span className="badge badge--teal" style={{ fontSize: 11, padding: "2px 8px" }}>
@@ -1242,10 +1266,10 @@ function NotificationBellDrawer({ onNav }) {
                   type="button"
                   className="btn-icon-subtle"
                   onClick={handleMarkAllRead}
-                  title="Mark all as read"
+                  title={t("notif.readAll")}
                 >
                   <Check size={14} />
-                  <span style={{ fontSize: 11 }}>Read All</span>
+                  <span style={{ fontSize: 11 }}>{t("notif.readAll")}</span>
                 </button>
               )}
               {notifications.length > 0 && (
@@ -1253,7 +1277,7 @@ function NotificationBellDrawer({ onNav }) {
                   type="button"
                   className="btn-icon-subtle danger"
                   onClick={handleClearAll}
-                  title="Clear all notifications"
+                  title={t("notif.clearAll")}
                 >
                   <Trash2 size={13} />
                 </button>
@@ -1274,13 +1298,13 @@ function NotificationBellDrawer({ onNav }) {
               className={`notif-tab ${filter === "all" ? "active" : ""}`}
               onClick={() => setFilter("all")}
             >
-              All ({notifications.length})
+              {t("notif.all")} ({notifications.length})
             </button>
             <button
               className={`notif-tab ${filter === "unread" ? "active" : ""}`}
               onClick={() => setFilter("unread")}
             >
-              Unread ({unreadCount})
+              {t("notif.unread")} ({unreadCount})
             </button>
           </div>
 
@@ -1288,16 +1312,16 @@ function NotificationBellDrawer({ onNav }) {
             {loading ? (
               <div className="notif-empty">
                 <Loader2 size={18} className="spin" color="var(--ink-soft)" />
-                <p>Loading notifications...</p>
+                <p>{t("common.loading")}</p>
               </div>
             ) : filteredItems.length === 0 ? (
               <div className="notif-empty">
                 <Bell size={28} color="var(--ink-faint)" />
                 <p style={{ margin: 0, fontWeight: 500, color: "var(--ink-soft)" }}>
-                  {filter === "unread" ? "No unread notifications" : "No notifications yet"}
+                  {t("notif.empty")}
                 </p>
                 <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>
-                  Medication reminders and dose alerts will appear here.
+                  {t("reminders.subtitle")}
                 </span>
               </div>
             ) : (
@@ -1389,30 +1413,31 @@ function NotificationBellDrawer({ onNav }) {
 
 function Shell({ role, active, onNav, onLogout, title, subtitle, children, userName }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { t } = useAppLanguage();
 
   const patientNav = [
-    { key: "dashboard", label: "Your documents", icon: Home },
-    { key: "reminders", label: "Medication Reminders", icon: Bell },
-    { key: "healthDatabase", label: "Health Library", icon: HeartPulse },
-    { key: "upload", label: "Upload a document", icon: UploadCloud },
-    { key: "emergency", label: "Emergency Aid", icon: ShieldAlert },
-    { key: "profile", label: "Your profile", icon: User },
+    { key: "dashboard", label: t("nav.documents"), icon: Home },
+    { key: "reminders", label: t("nav.reminders"), icon: Bell },
+    { key: "healthDatabase", label: t("nav.healthLibrary"), icon: HeartPulse },
+    { key: "upload", label: t("nav.upload"), icon: UploadCloud },
+    { key: "emergency", label: t("nav.emergency"), icon: ShieldAlert },
+    { key: "profile", label: t("nav.profile"), icon: User },
   ];
   const workerNav = [
-    { key: "dashboard", label: "Patient Directory", icon: Users },
-    { key: "reminders", label: "Medication Reminders", icon: Bell },
-    { key: "healthDatabase", label: "Health Library", icon: HeartPulse },
-    { key: "upload", label: "Upload Document", icon: UploadCloud },
-    { key: "emergency", label: "Emergency Aid", icon: ShieldAlert },
+    { key: "dashboard", label: t("nav.patientDirectory"), icon: Users },
+    { key: "reminders", label: t("nav.reminders"), icon: Bell },
+    { key: "healthDatabase", label: t("nav.healthLibrary"), icon: HeartPulse },
+    { key: "upload", label: t("nav.upload"), icon: UploadCloud },
+    { key: "emergency", label: t("nav.emergency"), icon: ShieldAlert },
   ];
   const adminNav = [
-    { key: "overview", label: "Overview", icon: LayoutDashboard },
-    { key: "users", label: "Users", icon: UserCog },
-    { key: "patients", label: "Patients", icon: Users },
-    { key: "documents", label: "Documents", icon: FileText },
-    { key: "reminders", label: "Medication Reminders", icon: Bell },
-    { key: "healthDatabase", label: "Health Library", icon: HeartPulse },
-    { key: "emergency", label: "Emergency Aid", icon: ShieldAlert },
+    { key: "overview", label: t("nav.overview"), icon: LayoutDashboard },
+    { key: "users", label: t("nav.users"), icon: UserCog },
+    { key: "patients", label: t("nav.patientDirectory"), icon: Users },
+    { key: "documents", label: t("nav.documents"), icon: FileText },
+    { key: "reminders", label: t("nav.reminders"), icon: Bell },
+    { key: "healthDatabase", label: t("nav.healthLibrary"), icon: HeartPulse },
+    { key: "emergency", label: t("nav.emergency"), icon: ShieldAlert },
   ];
   const items = role === "patient" ? patientNav : role === "healthcare_worker" ? workerNav : adminNav;
 
@@ -1445,7 +1470,8 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
         <div className="mobile-topbar__brand">
           <BrandMark />
         </div>
-        <div className="mobile-topbar__actions">
+        <div className="mobile-topbar__actions" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <LanguageSelector compact />
           <NotificationBellDrawer onNav={onNav} />
           {userName && (
             <div className="sidebar-avatar" style={{ width: 30, height: 30, fontSize: 11 }}>
@@ -1498,7 +1524,7 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
               <div className="sidebar-user__info">
                 <div className="sidebar-user__name" title={userName}>{userName}</div>
                 <div className="sidebar-user__role">
-                  {role === "healthcare_worker" ? "Healthcare Worker" : role === "admin" ? "Administrator" : "Patient"}
+                  {role === "healthcare_worker" ? t("role.worker") : role === "admin" ? t("role.admin") : t("role.patient")}
                 </div>
               </div>
             </div>
@@ -1511,7 +1537,7 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
             }}
           >
             <LogOut size={17} strokeWidth={2} />
-            Log out
+            {t("nav.logout")}
           </button>
         </div>
       </aside>
@@ -1521,16 +1547,17 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
             <h1>{title}</h1>
             {subtitle && <p>{subtitle}</p>}
           </div>
-          <div className="topbar__actions" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="topbar__actions">
+            <LanguageSelector />
             <NotificationBellDrawer onNav={onNav} />
             <button
               type="button"
               className="btn btn--secondary mobile-logout-btn"
               onClick={onLogout}
-              title="Log out"
+              title={t("nav.logout")}
             >
               <LogOut size={15} strokeWidth={2} />
-              <span>Log out</span>
+              <span>{t("nav.logout")}</span>
             </button>
           </div>
         </div>
@@ -1622,6 +1649,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const { t } = useAppLanguage();
 
   async function loadDocs() {
     if (!patient?.id) return;
@@ -1697,8 +1725,8 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
       active="dashboard"
       onNav={onNav}
       onLogout={onLogout}
-      userName={patient?.name || "Patient"}
-      title={`Welcome back, ${patientName}`}
+      userName={patient?.name || t("role.patient")}
+      title={t("dashboard.title")}
       subtitle="Here are your uploaded medical records, simplified prescriptions, and translations."
     >
       {error && (
@@ -1712,15 +1740,15 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
         {/* Left Column: Documents List & Search */}
         <div className="dashboard-main-content">
           <div className="section">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: "1.15rem", lineHeight: 1.2 }}>Your documents ({documents.length})</h2>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto", flexWrap: "wrap" }}>
+            <div className="patient-doc-header">
+              <h2 style={{ margin: 0, fontSize: "1.15rem", lineHeight: 1.2 }}>{t("dashboard.title")} ({documents.length})</h2>
+              <div className="patient-doc-actions">
                 {documents.length > 0 && (
-                  <div className="search-bar" style={{ flex: "1 1 140px", minWidth: 0, maxWidth: 280, margin: 0, height: 34, boxSizing: "border-box" }}>
+                  <div className="search-bar patient-search-bar">
                     <Search size={14} style={{ flexShrink: 0 }} />
                     <input
                       type="text"
-                      placeholder="Search records…"
+                      placeholder={t("dashboard.searchPlaceholder")}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -1735,15 +1763,15 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
             {loading ? (
               <div className="loading-box">
                 <div className="pulse-ring" />
-                <p style={{ color: "var(--ink-soft)", margin: 0 }}>Loading your medical records...</p>
+                <p style={{ color: "var(--ink-soft)", margin: 0 }}>{t("common.loading")}</p>
               </div>
             ) : filteredDocs.length === 0 ? (
               <div className="empty-state">
                 <FileText size={36} color="var(--ink-faint)" />
-                <h3>{searchQuery ? "No matching records found" : "No documents uploaded yet"}</h3>
-                <p>{searchQuery ? "Try searching with a different term." : "Upload a prescription, discharge summary, or report to get an easy explanation in your language."}</p>
+                <h3>{searchQuery ? t("common.error") : t("dashboard.noDocsTitle")}</h3>
+                <p>{searchQuery ? t("dashboard.searchPlaceholder") : t("dashboard.noDocsSubtitle")}</p>
                 <button className="btn btn--primary" onClick={() => onNav("upload")}>
-                  <Plus size={16} /> Upload document now
+                  <Plus size={16} /> {t("dashboard.uploadNew")}
                 </button>
               </div>
             ) : (
@@ -1759,7 +1787,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
                         {getDocTypeIcon(doc.document_type)}
                       </div>
                       <div className="doc-card__body">
-                        <div className="doc-card__type">{doc.document_type || "Medical Document"}</div>
+                        <div className="doc-card__type">{doc.document_type || t("nav.documents")}</div>
                         <div className="doc-card__meta">
                           {doc.original_filename} · {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "Recently"}
                         </div>
@@ -1778,7 +1806,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
                           className="btn btn--secondary"
                           style={{ padding: "6px 10px", fontSize: 12, color: "var(--brick)" }}
                           onClick={(e) => handleDeleteDoc(e, doc.id)}
-                          title="Delete document"
+                          title={t("common.delete")}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1799,7 +1827,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
           {documents.length > 0 && (
             <div style={{ marginTop: 12 }}>
               <button className="btn btn--primary" onClick={() => onNav("upload")}>
-                <Plus size={16} /> Upload another document
+                <Plus size={16} /> {t("dashboard.uploadNew")}
               </button>
             </div>
           )}
@@ -1811,7 +1839,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
           <div className="side-card">
             <div className="side-card__header">
               <div className="side-card__icon"><Pill size={16} /></div>
-              <h3 className="side-card__title">Recent Prescribed Medications</h3>
+              <h3 className="side-card__title">{t("dashboard.prescribedMeds")}</h3>
             </div>
             {recentMeds.length > 0 ? (
               <div className="med-widget-list">
@@ -1820,7 +1848,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
                     <div>
                       <div className="med-widget-name">{m.name}</div>
                       <div className="med-widget-sub">
-                        {m.dosage ? `Dosage: ${m.dosage}` : "As prescribed"} {m.frequency ? `· ${m.frequency}` : ""}
+                        {m.dosage ? `${t("reminders.dosage")}: ${m.dosage}` : "As prescribed"} {m.frequency ? `· ${m.frequency}` : ""}
                       </div>
                     </div>
                     <button
@@ -1830,14 +1858,14 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
                       style={{ fontSize: 11, padding: "4px 8px" }}
                       title="Schedule Twilio Reminder"
                     >
-                      <AlarmClock size={12} /> Set Reminder
+                      <AlarmClock size={12} /> {t("reminders.scheduleBtn")}
                     </button>
                   </div>
                 ))}
               </div>
             ) : (
               <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: 0, lineHeight: 1.5 }}>
-                Upload prescriptions to automatically generate a clear summary of your active medications here.
+                {t("dashboard.noDocsSubtitle")}
               </p>
             )}
           </div>
@@ -1846,7 +1874,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
           <div className="side-card">
             <div className="side-card__header">
               <div className="side-card__icon"><ClipboardList size={16} /></div>
-              <h3 className="side-card__title">Records Summary</h3>
+              <h3 className="side-card__title">{t("nav.overview")}</h3>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13, color: "var(--ink-soft)" }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -2104,6 +2132,7 @@ function CameraModal({ isOpen, onClose, onCapture }) {
 // ---------------------------------------------------------------------------
 
 function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
+  const { t } = useAppLanguage();
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState("");
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -2243,12 +2272,8 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
       active="upload"
       onNav={onNav}
       onLogout={onLogout}
-      title={role === "patient" ? "Upload a document" : "Upload for a patient"}
-      subtitle={
-        role === "patient"
-          ? "Snap a photo of your prescription or upload a PDF/report — our AI pipeline will extract the medicines, simplify the notes, and translate it for you."
-          : "Choose which patient this document belongs to, then photograph or upload it on their behalf."
-      }
+      title={role === "patient" ? t("upload.title") : t("nav.upload")}
+      subtitle={role === "patient" ? t("upload.subtitle") : t("upload.subtitle")}
     >
       {error && (
         <div className="alert alert--error">
@@ -2304,10 +2329,10 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                     <UploadCloud size={44} strokeWidth={1.75} />
                   </div>
                   <h3 style={{ margin: "0 0 6px", fontSize: 16, color: "var(--ink)" }}>
-                    {isDragging ? "Drop your document here" : "Drag and drop your document here"}
+                    {isDragging ? t("upload.dropzone") : t("upload.dropzone")}
                   </h3>
                   <p style={{ margin: 0, fontSize: 13, color: "var(--ink-soft)" }}>
-                    Supports PDF, JPG, or PNG (prescriptions, lab tests, discharge summaries)
+                    {t("upload.supported")}
                   </p>
                   <div className="upload-drop-zone__actions" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -2391,7 +2416,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
               </div>
             ) : (
               <button type="submit" className="btn btn--primary" disabled={!file}>
-                <UploadCloud size={16} /> Upload and process with AI
+                <UploadCloud size={16} /> {t("upload.processBtn")}
               </button>
             )}
           </form>
@@ -2546,10 +2571,11 @@ const LANG_BCP47 = {
 };
 
 function TTSPlayer({ extraction }) {
+  const { t } = useAppLanguage();
+  const [status, setStatus] = useState("idle"); // "idle", "playing", "paused"
+  const [rate, setRate] = useState(1);
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState(null);
-  const [status, setStatus] = useState("idle"); // "idle" | "playing" | "paused"
-  const [rate, setRate] = useState(1);
   const utteranceRef = useRef(null);
 
   // Load voices — they load async in most browsers
@@ -2621,7 +2647,7 @@ function TTSPlayer({ extraction }) {
       <div className="tts-player__header">
         <div className="tts-player__title">
           <Volume2 size={16} color="var(--teal)" />
-          <span>Listen to Summary</span>
+          <span>{t("landing.audioAssistanceTitle")}</span>
           {isPlaying && (
             <div className="tts-waveform">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -2629,7 +2655,7 @@ function TTSPlayer({ extraction }) {
               ))}
             </div>
           )}
-          {isPaused && <span className="tts-status-badge">Paused</span>}
+          {isPaused && <span className="tts-status-badge">{t("reminders.snoozed")}</span>}
         </div>
 
         <div className="tts-player__controls">
@@ -2656,7 +2682,7 @@ function TTSPlayer({ extraction }) {
 
       <div className="tts-player__settings">
         <div className="tts-setting">
-          <label htmlFor="tts-voice-select">Voice</label>
+          <label htmlFor="tts-voice-select">{t("common.language")}</label>
           <select
             id="tts-voice-select"
             value={selectedVoice || ""}
@@ -2665,7 +2691,7 @@ function TTSPlayer({ extraction }) {
               if (isActive) handleStop();
             }}
           >
-            {voices.length === 0 && <option value="">Loading voices…</option>}
+            {voices.length === 0 && <option value="">{t("common.loading")}</option>}
             {voices.map((v) => (
               <option key={v.voiceURI} value={v.voiceURI}>
                 {v.name} ({v.lang})
@@ -3103,6 +3129,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
 // ---------------------------------------------------------------------------
 
 function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
+  const { t } = useAppLanguage();
   const [docRecord, setDocRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -3171,7 +3198,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <button className="back-link" onClick={onBack} style={{ margin: 0 }}>
-          <ArrowLeft size={15} /> Back to documents
+          <ArrowLeft size={15} /> {t("common.back")}
         </button>
       </div>
 
@@ -3185,7 +3212,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
       {loading ? (
         <div className="loading-box">
           <div className="pulse-ring" />
-          <p style={{ color: "var(--ink-soft)", margin: 0 }}>Loading document analysis...</p>
+          <p style={{ color: "var(--ink-soft)", margin: 0 }}>{t("common.loading")}</p>
         </div>
       ) : (
         <div className="doc-detail-layout-grid">
@@ -3199,7 +3226,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
               <div className="section" style={{ marginTop: 24 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                   <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, fontSize: 18, color: "var(--ink)" }}>
-                    <Pill size={20} color="var(--teal)" /> Prescribed Medications ({medications.length})
+                    <Pill size={20} color="var(--teal)" /> {t("dashboard.prescribedMeds")} ({medications.length})
                   </h2>
                   <span className="badge badge--teal" style={{ fontSize: 11 }}>Structured AI Extraction</span>
                 </div>
@@ -3355,6 +3382,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
 // ---------------------------------------------------------------------------
 
 function ProfileScreen({ user, patient, onNav, onLogout, onProfileUpdated }) {
+  const { t } = useAppLanguage();
   const [name, setName] = useState(patient?.name || "");
   const [age, setAge] = useState(patient?.age || "");
   const [gender, setGender] = useState(patient?.gender || "Female");
@@ -3504,8 +3532,8 @@ Preferred Language: ${preferredLang || 'Hindi'}
       onNav={onNav}
       onLogout={onLogout}
       userName={patient?.name}
-      title="Your profile"
-      subtitle="Manage your personal details, emergency medical baseline, and app preferences."
+      title={t("nav.profile")}
+      subtitle={t("landing.heroSubtitle") ? undefined : "Manage your personal details, emergency medical baseline, and app preferences."}
     >
       <div className="profile-wrapper">
         {success && (
@@ -4031,6 +4059,7 @@ const NATIONAL_HELPLINES = [
 ];
 
 function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
+  const { t } = useAppLanguage();
   const [activeTab, setActiveTab] = useState("facilities"); // "facilities", "firstaid", "helplines", "ambulance"
   const [gpsStatus, setGpsStatus] = useState("idle"); // "idle" | "detecting" | "success" | "denied"
   const [userCoords, setUserCoords] = useState(null);
@@ -4159,8 +4188,8 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
       active="emergency"
       onNav={onNav}
       onLogout={onLogout}
-      title="Emergency Assistance & Location Services"
-      subtitle="24/7 First Aid Guides, Location-Based Hospital Search, Emergency Contacts & Ambulance Broadcast"
+      title={t("emergency.title")}
+      subtitle={t("emergency.subtitle")}
     >
       {/* Top Banner Alert Bar */}
       <div className="emergency-alert-banner">
@@ -4169,7 +4198,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
             <ShieldAlert size={28} color="#ffffff" />
           </div>
           <div>
-            <h2 className="emergency-banner-title">Medical Emergency Assistance</h2>
+            <h2 className="emergency-banner-title">{t("emergency.title")}</h2>
             <p className="emergency-banner-sub">
               If someone is unresponsive or in critical danger, call National Emergency <strong>112</strong> or Medical Helpline <strong>108</strong> immediately.
             </p>
@@ -4178,10 +4207,10 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
 
         <div className="emergency-quick-actions">
           <a href="tel:112" className="btn btn--emergency-dial">
-            <PhoneCall size={16} /> Call 112 (National)
+            <PhoneCall size={16} /> {t("emergency.call112")}
           </a>
           <a href="tel:108" className="btn btn--ambulance-dial">
-            <HeartPulse size={16} /> Call 108 (Ambulance)
+            <HeartPulse size={16} /> {t("emergency.call108")}
           </a>
         </div>
       </div>
@@ -4192,7 +4221,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
           className={`emergency-tab-btn ${activeTab === "facilities" ? "active" : ""}`}
           onClick={() => setActiveTab("facilities")}
         >
-          <MapPin size={16} /> Nearby Healthcare Facilities
+          <MapPin size={16} /> {t("emergency.findNearby")}
         </button>
         <button
           className={`emergency-tab-btn ${activeTab === "firstaid" ? "active" : ""}`}
@@ -4210,7 +4239,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
           className={`emergency-tab-btn ${activeTab === "ambulance" ? "active" : ""}`}
           onClick={() => setActiveTab("ambulance")}
         >
-          <Navigation size={16} /> Ambulance & Location Broadcast
+          <Navigation size={16} /> Ambulance Broadcast
         </button>
       </div>
 
@@ -4219,20 +4248,20 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
         <div className="section" style={{ marginTop: 20 }}>
           <div className="facilities-header-row">
             <div>
-              <h2 style={{ margin: 0, fontSize: 18 }}>Nearby Hospitals, Clinics & Pharmacies</h2>
+              <h2 style={{ margin: 0, fontSize: 18 }}>{t("emergency.findNearby")}</h2>
               <p style={{ margin: "4px 0 0", color: "var(--ink-soft)", fontSize: 13 }}>
-                Locate real-time healthcare facilities with 24/7 emergency care and GPS distance
+                {t("emergency.subtitle")}
               </p>
             </div>
 
             <button className="btn btn--secondary" onClick={handleDetectGPS} disabled={gpsStatus === "detecting"}>
               {gpsStatus === "detecting" ? (
                 <>
-                  <Loader2 size={16} className="spin" /> Detecting GPS...
+                  <Loader2 size={16} className="spin" /> {t("common.loading")}
                 </>
               ) : (
                 <>
-                  <Crosshair size={16} color="var(--teal)" /> Update My Location
+                  <Crosshair size={16} color="var(--teal)" /> {t("emergency.useGPS")}
                 </>
               )}
             </button>
@@ -4241,15 +4270,15 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
           {/* Location Controls & Filters */}
           <div className="facility-filter-bar">
             <div className="filter-group">
-              <span className="filter-label">Facility Type:</span>
+              <span className="filter-label">{t("common.language")}:</span>
               <div className="chip-buttons">
-                {["all", "hospital", "pharmacy", "clinic"].map((t) => (
+                {["all", "hospital", "pharmacy", "clinic"].map((tType) => (
                   <button
-                    key={t}
-                    className={`chip-btn ${facilityType === t ? "active" : ""}`}
-                    onClick={() => handleRefetchWithParams(radiusKm, t)}
+                    key={tType}
+                    className={`chip-btn ${facilityType === tType ? "active" : ""}`}
+                    onClick={() => handleRefetchWithParams(radiusKm, tType)}
                   >
-                    {t === "all" ? "All Facilities" : t.charAt(0).toUpperCase() + t.slice(1) + "s"}
+                    {tType === "all" ? t("emergency.allTypes") : tType === "hospital" ? t("emergency.hospitals") : tType === "pharmacy" ? t("emergency.pharmacies") : t("emergency.clinics")}
                   </button>
                 ))}
               </div>
@@ -4635,6 +4664,7 @@ function roundCoords(num) {
 // ---------------------------------------------------------------------------
 
 function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, onLogout }) {
+  const { t } = useAppLanguage();
   const [tab, setTab] = useState("patients"); // "patients", "documents", "stages"
   const [viewMode, setViewMode] = useState("grid"); // "grid" or "table"
   const [patients, setPatients] = useState([]);
@@ -4734,18 +4764,18 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
       active="dashboard"
       onNav={onNav}
       onLogout={onLogout}
-      userName={profile?.name || user?.name || "Healthcare Staff"}
-      title="Healthcare Worker Portal"
+      userName={profile?.name || user?.name || t("role.worker")}
+      title={t("dashboard.workerTitle")}
       subtitle={profile?.department ? `${profile.department} · ID: ${profile.employee_id || "Staff"}` : "Manage patient documents, community health records, and AI pipeline outputs."}
     >
       <div className="stat-row">
         <div className="stat">
           <div className="stat__value">{patients.length}</div>
-          <div className="stat__label">Registered Patients</div>
+          <div className="stat__label">{t("nav.patientDirectory")}</div>
         </div>
         <div className="stat">
           <div className="stat__value">{allDocs.length}</div>
-          <div className="stat__label">Processed Documents</div>
+          <div className="stat__label">{t("nav.documents")}</div>
         </div>
       </div>
 
@@ -4755,14 +4785,14 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
           onClick={() => setTab("patients")}
         >
           <Users size={15} style={{ marginRight: 6, verticalAlign: "middle" }} />
-          Patients Directory ({patients.length})
+          {t("nav.patientDirectory")} ({patients.length})
         </button>
         <button
           className={`tab-btn ${tab === "documents" ? "active" : ""}`}
           onClick={() => setTab("documents")}
         >
           <FileText size={15} style={{ marginRight: 6, verticalAlign: "middle" }} />
-          All Documents ({allDocs.length})
+          {t("nav.documents")} ({allDocs.length})
         </button>
         <button
           className={`tab-btn ${tab === "stages" ? "active" : ""}`}
@@ -4950,12 +4980,12 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                 <table className="patient-table">
                   <thead>
                     <tr>
-                      <th>Patient Name & ID</th>
+                      <th>{t("role.patient")}</th>
                       <th>Demographics</th>
-                      <th>Contact Phone</th>
-                      <th>Preferred Language</th>
-                      <th>Records Attached</th>
-                      <th style={{ textAlign: "right" }}>Actions</th>
+                      <th>{t("reminders.phone")}</th>
+                      <th>{t("common.language")}</th>
+                      <th>{t("nav.documents")}</th>
+                      <th style={{ textAlign: "right" }}>{t("dashboard.viewDetails")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -5266,6 +5296,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
 }
 
 function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocument, onLogout }) {
+  const { t } = useAppLanguage();
   const [patientData, setPatientData] = useState(patient);
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -5332,11 +5363,11 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <button className="back-link" onClick={onBack} style={{ margin: 0 }}>
-          <ArrowLeft size={15} /> Back to patients
+          <ArrowLeft size={15} /> {t("common.back")}
         </button>
         <div>
           <button className="btn btn--secondary" onClick={() => setEditing(!editing)}>
-            <Edit3 size={15} /> {editing ? "Cancel Editing" : "Edit Profile"}
+            <Edit3 size={15} /> {editing ? t("common.cancel") : t("common.save")}
           </button>
         </div>
       </div>
@@ -5478,15 +5509,16 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
 // ---------------------------------------------------------------------------
 
 function AdminDashboard({ user, onLogout }) {
+  const { t } = useAppLanguage();
   const [activePanel, setActivePanel] = useState("overview");
 
-  const adminName = user?.name || user?.email || "Admin";
+  const adminName = user?.name || user?.email || t("role.admin");
 
   const panelTitles = {
-    overview: { title: "System Overview", subtitle: "Live metrics across the entire platform" },
-    users: { title: "User Management", subtitle: "Manage accounts, roles, and verification" },
-    patients: { title: "Patient Audit", subtitle: "All registered patient profiles with document counts" },
-    documents: { title: "Document Audit", subtitle: "System-wide uploaded documents" },
+    overview: { title: t("nav.overview"), subtitle: "Live metrics across the entire platform" },
+    users: { title: t("nav.users"), subtitle: "Manage accounts, roles, and verification" },
+    patients: { title: t("nav.patientDirectory"), subtitle: "All registered patient profiles with document counts" },
+    documents: { title: t("nav.documents"), subtitle: "System-wide uploaded documents" },
   };
 
   const current = panelTitles[activePanel] || panelTitles["overview"];
@@ -5511,6 +5543,7 @@ function AdminDashboard({ user, onLogout }) {
 
 // ---- Overview Panel ----
 function AdminOverviewPanel() {
+  const { t } = useAppLanguage();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -5524,11 +5557,11 @@ function AdminOverviewPanel() {
   if (loading) return (
     <div className="admin-loading">
       <div className="pulse-ring" />
-      <span>Loading system statistics…</span>
+      <span>{t("common.loading")}</span>
     </div>
   );
 
-  if (!stats) return <div className="admin-empty"><p>Failed to load statistics.</p></div>;
+  if (!stats) return <div className="admin-empty"><p>{t("common.error")}</p></div>;
 
   const maxLangCount = stats.language_breakdown?.length
     ? Math.max(...stats.language_breakdown.map((l) => l.count))
@@ -5540,29 +5573,29 @@ function AdminOverviewPanel() {
         <div className="admin-stat-card">
           <div className="admin-stat-card__icon"><Users size={18} /></div>
           <div className="admin-stat-card__value">{stats.total_users ?? 0}</div>
-          <div className="admin-stat-card__label">Total Users</div>
+          <div className="admin-stat-card__label">{t("nav.users")}</div>
           <div className="admin-stat-card__sub">
-            {stats.users_by_role?.patient ?? 0} patients · {stats.users_by_role?.healthcare_worker ?? 0} workers · {stats.users_by_role?.admin ?? 0} admins
+            {stats.users_by_role?.patient ?? 0} {t("role.patient")} · {stats.users_by_role?.healthcare_worker ?? 0} {t("role.worker")} · {stats.users_by_role?.admin ?? 0} {t("role.admin")}
           </div>
         </div>
 
         <div className="admin-stat-card admin-stat-card--green">
           <div className="admin-stat-card__icon"><User size={18} /></div>
           <div className="admin-stat-card__value">{stats.total_patients ?? 0}</div>
-          <div className="admin-stat-card__label">Patients</div>
+          <div className="admin-stat-card__label">{t("nav.patientDirectory")}</div>
         </div>
 
         <div className="admin-stat-card admin-stat-card--teal">
           <div className="admin-stat-card__icon"><FileText size={18} /></div>
           <div className="admin-stat-card__value">{stats.total_documents ?? 0}</div>
-          <div className="admin-stat-card__label">Documents Uploaded</div>
+          <div className="admin-stat-card__label">{t("nav.documents")}</div>
           <div className="admin-stat-card__sub">{stats.total_extractions ?? 0} processed</div>
         </div>
 
         <div className="admin-stat-card admin-stat-card--gold">
           <div className="admin-stat-card__icon"><ShieldCheck size={18} /></div>
           <div className="admin-stat-card__value">{stats.total_healthcare_workers ?? 0}</div>
-          <div className="admin-stat-card__label">Healthcare Workers</div>
+          <div className="admin-stat-card__label">{t("role.worker")}</div>
           <div className="admin-stat-card__sub">
             {stats.verified_workers ?? 0} verified · {stats.unverified_workers ?? 0} pending
           </div>
@@ -5642,6 +5675,7 @@ function AdminOverviewPanel() {
 
 // ---- Users Panel ----
 function AdminUsersPanel() {
+  const { t } = useAppLanguage();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -5711,7 +5745,7 @@ function AdminUsersPanel() {
     <div className="admin-panel">
       <div className="admin-panel__header">
         <h3 className="admin-panel__title">
-          <UserCog size={15} /> User Accounts
+          <UserCog size={15} /> {t("nav.users")}
           <span className="admin-panel__count">{users.length}</span>
         </h3>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -5721,7 +5755,7 @@ function AdminUsersPanel() {
           <div className="admin-search-wrap">
             <Search size={14} />
             <input
-              placeholder="Search by name, email, or role…"
+              placeholder={t("dashboard.searchPlaceholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -5730,20 +5764,20 @@ function AdminUsersPanel() {
       </div>
       <div className="admin-panel__body">
         {loading ? (
-          <div className="admin-loading"><div className="pulse-ring" /><span>Loading users…</span></div>
+          <div className="admin-loading"><div className="pulse-ring" /><span>{t("common.loading")}</span></div>
         ) : filtered.length === 0 ? (
-          <div className="admin-empty"><Users size={32} /><p>No users found.</p></div>
+          <div className="admin-empty"><Users size={32} /><p>{t("common.error")}</p></div>
         ) : (
           <>
             <div className="admin-table-scroll">
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Name / Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Joined</th>
-                    <th>Actions</th>
+                    <th>{t("role.patient")}</th>
+                    <th>{t("common.language")}</th>
+                    <th>{t("dashboard.uploadedOn")}</th>
+                    <th>{t("dashboard.uploadedOn")}</th>
+                    <th>{t("dashboard.viewDetails")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -5824,6 +5858,7 @@ function AdminUsersPanel() {
 
 // ---- Patients Panel ----
 function AdminPatientsPanel() {
+  const { t } = useAppLanguage();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -5865,7 +5900,7 @@ function AdminPatientsPanel() {
     <div className="admin-panel">
       <div className="admin-panel__header">
         <h3 className="admin-panel__title">
-          <Users size={15} /> Registered Patients
+          <Users size={15} /> {t("nav.patientDirectory")}
           <span className="admin-panel__count">{patients.length}</span>
         </h3>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -5875,7 +5910,7 @@ function AdminPatientsPanel() {
           <div className="admin-search-wrap">
             <Search size={14} />
             <input
-              placeholder="Search by name or phone…"
+              placeholder={t("dashboard.searchPlaceholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -5884,22 +5919,22 @@ function AdminPatientsPanel() {
       </div>
       <div className="admin-panel__body">
         {loading ? (
-          <div className="admin-loading"><div className="pulse-ring" /><span>Loading patients…</span></div>
+          <div className="admin-loading"><div className="pulse-ring" /><span>{t("common.loading")}</span></div>
         ) : filtered.length === 0 ? (
-          <div className="admin-empty"><User size={32} /><p>No patients found.</p></div>
+          <div className="admin-empty"><User size={32} /><p>{t("common.error")}</p></div>
         ) : (
           <>
             <div className="admin-table-scroll">
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Age / Gender</th>
-                    <th>Language</th>
-                    <th>Phone</th>
-                    <th>Documents</th>
-                    <th>Joined</th>
-                    <th>Actions</th>
+                    <th>{t("role.patient")}</th>
+                    <th>Demographics</th>
+                    <th>{t("common.language")}</th>
+                    <th>{t("reminders.phone")}</th>
+                    <th>{t("nav.documents")}</th>
+                    <th>{t("dashboard.uploadedOn")}</th>
+                    <th>{t("dashboard.viewDetails")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -6100,6 +6135,7 @@ function AdminDocumentsPanel() {
 // ---------------------------------------------------------------------------
 
 function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
+  const { t } = useAppLanguage();
   const [query, setQuery] = useState("");
   const [language, setLanguage] = useState("en");
   const [popularTopics, setPopularTopics] = useState([]);
@@ -6209,8 +6245,8 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
       onNav={onNav}
       onLogout={onLogout}
       userName={profile?.name}
-      title="Healthcare Information Library"
-      subtitle="Powered by MedlinePlus (National Library of Medicine). Search medical topics and read trusted health guidelines in your language."
+      title={t("healthDb.title")}
+      subtitle={t("healthDb.subtitle")}
     >
       <div className="health-db-container">
         {/* Search Bar */}
@@ -6220,7 +6256,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
               <Search size={18} color="var(--teal)" />
               <input
                 type="text"
-                placeholder="Search any disease, symptom, medication, or condition..."
+                placeholder={t("healthDb.searchPlaceholder")}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -6320,7 +6356,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
           <div className="health-db-popular-section">
             <div className="health-db-section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18 }}>Popular Health Topics</h2>
+                <h2 style={{ margin: 0, fontSize: 18 }}>{t("healthDb.popularTopics")}</h2>
                 <p className="section-sub" style={{ margin: "2px 0 0", color: "var(--ink-soft)", fontSize: 13 }}>
                   Essential healthcare guidelines curated from MedlinePlus
                 </p>
@@ -6356,7 +6392,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                     <div className="health-topic-card__footer">
                       <span className="topic-org-label">MedlinePlus / NLM</span>
                       <button type="button" className="btn-link" style={{ background: "none", border: "none", color: "var(--teal)", cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 2 }}>
-                        Read Topic <ChevronRight size={14} />
+                        {t("healthDb.readFull")} <ChevronRight size={14} />
                       </button>
                     </div>
                   </div>
@@ -6407,7 +6443,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
               <div className="topic-translate-bar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "10px 14px", background: "var(--bg-subtle)", borderRadius: 10, margin: "12px 0 16px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Globe size={15} color="var(--teal)" />
-                  <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>Translate this article:</span>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{t("healthDb.translateTo")}</span>
                   <select
                     value={targetLang}
                     onChange={(e) => setTargetLang(e.target.value)}
@@ -6504,6 +6540,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
 // ---------------------------------------------------------------------------
 
 function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, clearPrefilledReminder }) {
+  const { t } = useAppLanguage();
   const [reminders, setReminders] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -6637,8 +6674,8 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
       onNav={onNav}
       onLogout={onLogout}
       userName={profile?.name}
-      title="Medication Reminders & Caregiver Alerts"
-      subtitle="Schedule medicine intake, receive automated Twilio SMS reminders, track missed doses, and automatically alert your caregiver."
+      title={t("reminders.title")}
+      subtitle={t("reminders.subtitle")}
     >
       <div className="health-db-container">
         {/* Top Summary Cards */}
@@ -6649,7 +6686,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
             </div>
             <div>
               <div style={{ fontSize: 24, fontWeight: 700, color: "var(--ink)" }}>{reminders.length}</div>
-              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>Active Medication Schedules</div>
+              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("reminders.activeReminders")}</div>
             </div>
           </div>
 
@@ -6659,7 +6696,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
             </div>
             <div>
               <div style={{ fontSize: 24, fontWeight: 700, color: "var(--ink)" }}>{takenCount}</div>
-              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>Doses Taken Today</div>
+              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("reminders.taken")}</div>
             </div>
           </div>
 
@@ -6669,7 +6706,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
             </div>
             <div>
               <div style={{ fontSize: 24, fontWeight: 700, color: missedCount > 0 ? "var(--brick)" : "var(--ink)" }}>{missedCount}</div>
-              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>Missed Doses Today</div>
+              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("reminders.missed")}</div>
             </div>
           </div>
 
@@ -6687,13 +6724,13 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
         {/* Section Header with Add Button */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h2 style={{ fontSize: 20, margin: 0, color: "var(--ink)" }}>Today's Dose Schedule</h2>
+            <h2 style={{ fontSize: 20, margin: 0, color: "var(--ink)" }}>{t("reminders.todaySchedule")}</h2>
             <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: "4px 0 0" }}>
               {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           </div>
           <button className="btn btn--primary" onClick={() => setShowModal(true)}>
-            <Plus size={16} /> Schedule New Reminder
+            <Plus size={16} /> {t("reminders.scheduleBtn")}
           </button>
         </div>
 
@@ -6701,17 +6738,17 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
         {loading ? (
           <div className="loading-box" style={{ padding: 30 }}>
             <Loader2 size={24} className="spin" color="var(--teal)" />
-            <p style={{ margin: "10px 0 0", color: "var(--ink-soft)" }}>Loading schedule...</p>
+            <p style={{ margin: "10px 0 0", color: "var(--ink-soft)" }}>{t("common.loading")}</p>
           </div>
         ) : logs.length === 0 ? (
           <div className="empty-state" style={{ background: "var(--panel)", padding: 36, borderRadius: 12, border: "1px dashed var(--border)", textAlign: "center" }}>
             <AlarmClock size={36} color="var(--teal)" style={{ marginBottom: 12 }} />
-            <h3 style={{ margin: 0, fontSize: 16 }}>No Dose Schedules for Today</h3>
+            <h3 style={{ margin: 0, fontSize: 16 }}>{t("reminders.noActive")}</h3>
             <p style={{ color: "var(--ink-soft)", fontSize: 13, maxWidth: 450, margin: "8px auto 16px" }}>
-              Click "Schedule New Reminder" or set a reminder directly from any prescription document.
+              {t("reminders.scheduleBtn")}
             </p>
             <button className="btn btn--secondary" onClick={() => setShowModal(true)}>
-              <Plus size={15} /> Create Medication Schedule
+              <Plus size={15} /> {t("reminders.scheduleBtn")}
             </button>
           </div>
         ) : (
@@ -6781,29 +6818,29 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     {log.status === "taken" ? (
                       <span className="badge badge--teal" style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
-                        <CheckCircle2 size={14} /> Taken at {log.action_time ? new Date(log.action_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "scheduled time"}
+                        <CheckCircle2 size={14} /> {t("reminders.taken")} {log.action_time ? new Date(log.action_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
                       </span>
                     ) : log.status === "missed" ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span className="badge" style={{ background: "rgba(192, 57, 43, 0.12)", color: "var(--brick)", padding: "6px 12px", fontSize: 12 }}>
-                          <AlertCircle size={14} style={{ marginRight: 4 }} /> Missed Dose
+                          <AlertCircle size={14} style={{ marginRight: 4 }} /> {t("reminders.missed")}
                         </span>
                         {log.notified_caregiver === 1 && (
                           <span style={{ fontSize: 11, color: "var(--brick)", fontWeight: 500 }}>
-                            📢 Caregiver Notified via Twilio
+                            📢 Caregiver Notified
                           </span>
                         )}
                         <button className="btn btn--secondary btn--sm" onClick={() => handleMarkTaken(log.id)} style={{ fontSize: 12 }}>
-                          Mark Taken Now
+                          {t("reminders.markTaken")}
                         </button>
                       </div>
                     ) : (
                       <>
                         <button className="btn btn--primary btn--sm" onClick={() => handleMarkTaken(log.id)} style={{ fontSize: 12 }}>
-                          <CheckCircle2 size={14} /> Mark as Taken
+                          <CheckCircle2 size={14} /> {t("reminders.markTaken")}
                         </button>
                         <button className="btn btn--secondary btn--sm" onClick={() => handleSnooze(log.id)} style={{ fontSize: 12 }}>
-                          <Clock size={13} /> Snooze (15m)
+                          <Clock size={13} /> {t("reminders.snooze15")}
                         </button>
                       </>
                     )}
@@ -6816,10 +6853,10 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
 
         {/* Active Schedules Section */}
         <div style={{ marginTop: 32 }}>
-          <h3 style={{ fontSize: 18, color: "var(--ink)", marginBottom: 14 }}>Active Medication Schedules</h3>
+          <h3 style={{ fontSize: 18, color: "var(--ink)", marginBottom: 14 }}>{t("reminders.activeReminders")}</h3>
 
           {reminders.length === 0 ? (
-            <p style={{ color: "var(--ink-soft)", fontSize: 13 }}>No active medication schedules set up yet.</p>
+            <p style={{ color: "var(--ink-soft)", fontSize: 13 }}>{t("reminders.noActive")}</p>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
               {reminders.map((rem) => (
@@ -6831,7 +6868,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                     </div>
 
                     <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: "0 0 12px" }}>
-                      Dosage: <strong>{rem.dosage || "As prescribed"}</strong>
+                      {t("reminders.dosage")}: <strong>{rem.dosage || t("reminders.scheduled")}</strong>
                     </p>
 
                     <div style={{ fontSize: 12, color: "var(--ink)", background: "var(--bg-subtle)", padding: "8px 12px", borderRadius: 8, marginBottom: 12 }}>
@@ -6868,7 +6905,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
             <div style={{ background: "var(--panel)", borderRadius: 16, width: "100%", maxWidth: 520, padding: 24, boxShadow: "0 20px 40px rgba(0,0,0,0.2)", maxHeight: "90vh", overflowY: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <h3 style={{ margin: 0, fontSize: 18, color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
-                  <AlarmClock size={20} color="var(--teal)" /> Schedule Medication Reminder
+                  <AlarmClock size={20} color="var(--teal)" /> {t("reminders.scheduleBtn")}
                 </h3>
                 <button type="button" onClick={() => setShowModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-soft)" }}>
                   <X size={20} />
@@ -6877,7 +6914,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
 
               <form onSubmit={handleCreateReminder} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Medicine Name *</label>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>{t("reminders.medicineName")} *</label>
                   <input
                     type="text"
                     required
@@ -6889,7 +6926,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Dosage / Instructions</label>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>{t("reminders.dosage")}</label>
                   <input
                     type="text"
                     value={dosage}
@@ -6901,7 +6938,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Reminder Time 1 *</label>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>{t("reminders.times")} 1 *</label>
                     <input
                       type="time"
                       required
@@ -6912,7 +6949,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Reminder Time 2 (Optional)</label>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>{t("reminders.times")} 2</label>
                     {useSecondTime ? (
                       <input
                         type="time"
@@ -6959,7 +6996,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                   </h4>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
-                      <label style={{ display: "block", fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}>Patient Phone (SMS)</label>
+                      <label style={{ display: "block", fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}>{t("reminders.phone")}</label>
                       <input
                         type="tel"
                         value={patientPhone}
@@ -6969,7 +7006,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                       />
                     </div>
                     <div>
-                      <label style={{ display: "block", fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}>Caregiver Name</label>
+                      <label style={{ display: "block", fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}>{t("reminders.caregiverName")}</label>
                       <input
                         type="text"
                         value={caregiverName}
@@ -6981,7 +7018,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                   </div>
 
                   <div style={{ marginTop: 8 }}>
-                    <label style={{ display: "block", fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}>Caregiver Phone (Missed Dose SMS Alert)</label>
+                    <label style={{ display: "block", fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}>{t("reminders.caregiverPhone")}</label>
                     <input
                       type="tel"
                       value={caregiverPhone}
@@ -6994,10 +7031,10 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
 
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 12 }}>
                   <button type="button" className="btn btn--secondary" onClick={() => setShowModal(false)}>
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                   <button type="submit" className="btn btn--primary" disabled={submitting}>
-                    {submitting ? <Loader2 size={16} className="spin" /> : "Save & Activate Schedule"}
+                    {submitting ? <Loader2 size={16} className="spin" /> : t("common.save")}
                   </button>
                 </div>
               </form>
@@ -7024,6 +7061,16 @@ export default function App() {
   const [prefilledReminder, setPrefilledReminder] = useState(null);
   const [bootstrapping, setBootstrapping] = useState(true);
 
+  // Global App Language State
+  const [appLanguage, setAppLanguageState] = useState(() => {
+    return localStorage.getItem("sehat_saathi_lang") || "hi";
+  });
+
+  function changeAppLanguage(newLang) {
+    setAppLanguageState(newLang);
+    localStorage.setItem("sehat_saathi_lang", newLang);
+  }
+
   // Restore authenticated session on mount
   useEffect(() => {
     async function restoreSession() {
@@ -7038,6 +7085,13 @@ export default function App() {
         setProfile(res.profile);
         setRole(res.user.role || "patient");
         setScreen("dashboard");
+
+        // Sync user preferred language if available
+        if (res.profile?.preferred_language) {
+          const userLangCode = getLanguageCode(res.profile.preferred_language);
+          setAppLanguageState(userLangCode);
+          localStorage.setItem("sehat_saathi_lang", userLangCode);
+        }
       } catch (err) {
         console.warn("Session restore failed, clearing token", err);
         clearToken();
@@ -7229,12 +7283,20 @@ export default function App() {
   }
 
   return (
-    <div className="ss-root">
-      <GlobalModals />
-      <PageTransition key={screen + (role || "")}>
-        {body}
-      </PageTransition>
-    </div>
+    <LanguageContext.Provider
+      value={{
+        language: appLanguage,
+        setLanguage: changeAppLanguage,
+        t: (key) => translate(key, appLanguage),
+      }}
+    >
+      <div className="ss-root">
+        <GlobalModals />
+        <PageTransition key={screen + (role || "")}>
+          {body}
+        </PageTransition>
+      </div>
+    </LanguageContext.Provider>
   );
 }
 
