@@ -1,0 +1,209 @@
+Line 100 (Title): Select App Language / भाषा चुनें
+Line 198 (Title): Copy to clipboard
+Line 302 (JSX Text): Password Strength:
+Line 731 (JSX Text): Medical documents, explained in your own language.
+Line 740 (JSX Text): Log in
+Line 741 (JSX Text): Welcome back. Enter your credentials to sign in.
+Line 778 (Placeholder): you@example.com
+Line 880 (JSX Text): Built for the person who has to explain the prescription twice.
+Line 890 (JSX Text): Create an account
+Line 891 (JSX Text): It takes about a minute.
+Line 928 (Placeholder): e.g. Ramesh Kumar
+Line 937 (Placeholder): you@example.com
+Line 958 (Placeholder): 34
+Line 965 (JSX Text): Female
+Line 966 (JSX Text): Male
+Line 967 (JSX Text): Other
+Line 974 (Placeholder): 98765 43210
+Line 998 (Placeholder): ADMIN-...
+Line 1012 (Placeholder): HOSPITAL-...
+Line 1020 (Placeholder): e.g. EMP-1024
+Line 1028 (Placeholder): e.g. Community Health
+Line 1037 (Placeholder): e.g. 98765 43210
+Line 1289 (Title): Close
+Line 1381 (Title): Mark as read
+Line 1390 (Title): Delete notification
+Line 1596 (Title): Previous page
+Line 1613 (Title): Next page
+Line 1730 (Title): Here are your uploaded medical records, simplified prescriptions, and translations.
+Line 1801 (Title): Download original document
+Line 1859 (Title): Schedule Twilio Reminder
+Line 1881 (JSX Text): Total Stored Records:
+Line 1885 (JSX Text): Preferred Language:
+Line 1889 (JSX Text): Last Updated:
+Line 1901 (JSX Text): Doctor Shorthand Guide
+Line 1909 (JSX Text): Morning & Evening
+Line 1913 (JSX Text): Thrice a day
+Line 1916 (JSX Text): OD / BD
+Line 1917 (JSX Text): Once / Twice daily
+Line 1920 (JSX Text): AC / PC
+Line 1921 (JSX Text): Before / After meals
+Line 2081 (JSX Text): Position prescription or document within frame
+Line 2082 (JSX Text): Hold steady for sharp OCR text
+Line 2113 (Title): Take photo
+Line 2289 (JSX Text): Patient Assignment
+Line 2308 (JSX Text): Document Source
+Line 2395 (JSX Text): Processing Document with AI
+Line 2431 (JSX Text): Upload Guide & Best Practices
+Line 2440 (JSX Text): Sharp & Well-Lit Photos
+Line 2441 (JSX Text): Avoid dark shadows or blurry angles over handwritten notes.
+Line 2447 (JSX Text): Supported Documents
+Line 2448 (JSX Text): Prescriptions, lab test reports, discharge summaries, and medical certificates.
+Line 2455 (JSX Text): Medical files are processed securely for patient care only.
+Line 2461 (JSX Text): Instant Regional Translation
+Line 2470 (JSX Text): Live Document Preview
+Line 2471 (JSX Text): Ready
+Line 2479 (JSX Text): PDF Document Selected
+Line 2486 (JSX Text): File Name:
+Line 2490 (JSX Text): File Size:
+Line 2494 (JSX Text): Target Language:
+Line 2666 (Title): Stop
+Line 2672 (Title): Pause
+Line 2721 (JSX Text): Preview speech script
+Line 2950 (Title): Ask Sehat Saathi (AI Medical Assistant)
+Line 2955 (JSX Text): Ask Sehat Saathi AI
+Line 2969 (JSX Text): Ask Sehat Saathi
+Line 2994 (Title): Minimize Assistant
+Line 3047 (JSX Text): Stop
+Line 3052 (JSX Text): Listen
+Line 3231 (JSX Text): Structured AI Extraction
+Line 3257 (JSX Text): Frequency:
+Line 3258 (JSX Text): Duration:
+Line 3294 (JSX Text): Plain Language Explanations
+Line 3298 (JSX Text): English (Simplified)
+Line 3320 (JSX Text): Show raw extracted OCR text
+Line 3336 (JSX Text): Document Details
+Line 3341 (JSX Text): Type:
+Line 3347 (JSX Text): Target Language:
+Line 3351 (JSX Text): Uploaded:
+Line 3357 (JSX Text): File Name:
+Line 3542 (JSX Text): Profile changes saved successfully!
+Line 3573 (Title): Copy Patient ID
+Line 3589 (JSX Text): Profile Completeness
+Line 3611 (JSX Text): Uploaded Records
+Line 3618 (JSX Text): Target Language
+Line 3625 (JSX Text): Blood Group
+Line 3639 (JSX Text): Personal Information
+Line 3640 (JSX Text): Basic identity details for identification on records
+Line 3650 (Placeholder): e.g. Rahul Sharma
+Line 3660 (Placeholder): e.g. 34
+Line 3668 (JSX Text): Female
+Line 3669 (JSX Text): Male
+Line 3670 (JSX Text): Other
+Line 3671 (JSX Text): Prefer not to say
+Line 3680 (Placeholder): +91 98765 43210
+Line 3693 (JSX Text): Medical Baseline & Emergency Info
+Line 3694 (JSX Text): Essential clinical context used in emergency situations and AI processing
+Line 3701 (JSX Text): Select Blood Group
+Line 3709 (JSX Text): AB-
+Line 3718 (Placeholder): Primary emergency contact
+Line 3728 (Placeholder): List any known allergies
+Line 3739 (Placeholder): Any chronic health conditions or ongoing medical notes
+Line 3753 (JSX Text): Language & Accessibility Settings
+Line 3754 (JSX Text): Default translation target and voice narration controls
+Line 3786 (JSX Text): Emergency Patient ID Pass
+Line 3787 (JSX Text): Instant digital emergency record summary for doctors or first responders
+Line 3793 (JSX Text): SEHAT SAATHI EMERGENCY MEDICAL ID
+Line 3799 (JSX Text): Patient Name
+Line 3803 (JSX Text): Age & Gender
+Line 3807 (JSX Text): Blood Group
+Line 3811 (JSX Text): Emergency Contact
+Line 3815 (JSX Text): Known Allergies
+Line 3819 (JSX Text): Medical Conditions
+Line 3862 (JSX Text): Danger Zone
+Line 3863 (JSX Text): Permanently remove your account and stored medical records
+Line 4203 (JSX Text): or Medical Helpline
+Line 4288 (JSX Text): Search Radius:
+Line 4305 (Placeholder): Or enter city / area name...
+Line 4329 (JSX Text): Searching nearby healthcare facilities...
+Line 4334 (JSX Text): No facilities found in this range. Try increasing the search radius.
+Line 4375 (JSX Text): Directions & Maps
+Line 4390 (JSX Text): Step-by-Step First Aid Guidance
+Line 4400 (Placeholder): Search first aid guide...
+Line 4455 (JSX Text): Step-by-Step Action Plan:
+Line 4485 (JSX Text): Need immediate ambulance response for this patient?
+Line 4502 (JSX Text): National Emergency Helplines (India)
+Line 4528 (JSX Text): Your Personal Emergency Contact
+Line 4534 (JSX Text): Saved in your Sehat Saathi profile
+Line 4547 (JSX Text): No personal emergency contact added to profile yet.
+Line 4563 (JSX Text): Instant Location Broadcast to Responders
+Line 4591 (JSX Text): Direct Government Emergency Ambulance
+Line 4608 (JSX Text): Ambulance Request Form
+Line 4618 (JSX Text): Unconscious / Non-Responsive
+Line 4619 (JSX Text): Breathing Difficulty / Asphyxia
+Line 4620 (JSX Text): Severe Bleeding & Trauma
+Line 4621 (JSX Text): Chest Pain / Suspected Heart Attack
+Line 4622 (JSX Text): Stroke Symptoms (FAST)
+Line 4623 (JSX Text): Burns / Envenomation / Snake Bite
+Line 4630 (Placeholder): Your mobile phone number
+Line 4639 (Placeholder): e.g. Near Bus Stand / Gate 2
+Line 4825 (Placeholder): Search patient by name, phone or ID...
+Line 4848 (Title): Grid Cards View
+Line 4855 (Title): Table List View
+Line 4870 (JSX Text): Loading patients directory...
+Line 4875 (JSX Text): No patients found
+Line 4919 (JSX Text): Demographics:
+Line 4927 (JSX Text): Phone:
+Line 4933 (JSX Text): Documents:
+Line 4984 (JSX Text): Demographics
+Line 5088 (JSX Text): Loading all documents...
+Line 5093 (JSX Text): No documents uploaded yet across all patients.
+Line 5124 (Title): Download file
+Line 5149 (Title): Delete file
+Line 5171 (JSX Text): AI Pipeline Stage Debugger
+Line 5196 (JSX Text): Viewing:
+Line 5221 (JSX Text): Register New Patient
+Line 5234 (Placeholder): e.g. Maya Devi
+Line 5245 (Placeholder): 45
+Line 5252 (JSX Text): Female
+Line 5253 (JSX Text): Male
+Line 5254 (JSX Text): Other
+Line 5262 (Placeholder): 98765 43210
+Line 5378 (JSX Text): Edit Patient Details
+Line 5390 (JSX Text): Female
+Line 5391 (JSX Text): Male
+Line 5392 (JSX Text): Other
+Line 5406 (JSX Text): Save Changes
+Line 5421 (JSX Text): Loading patient documents...
+Line 5426 (JSX Text): No documents uploaded yet for this patient.
+Line 5461 (Title): Download original file
+Line 5486 (Title): Delete document
+Line 5630 (JSX Text): No translation data yet.
+Line 5640 (JSX Text): last 10
+Line 5668 (JSX Text): No uploads yet.
+Line 5815 (Title): Promote to Admin
+Line 5835 (Title): Delete user
+Line 5932 (JSX Text): Demographics
+Line 5970 (Title): Delete patient
+Line 6046 (Placeholder): Search by filename or type…
+Line 6057 (JSX Text): No documents found.
+Line 6064 (JSX Text): Filename
+Line 6065 (JSX Text): Type
+Line 6066 (JSX Text): Patient ID
+Line 6067 (JSX Text): Uploaded
+Line 6068 (JSX Text): Actions
+Line 6102 (Title): Download file
+Line 6109 (Title): Delete document
+Line 6326 (JSX Text): MedlinePlus
+Line 6369 (JSX Text): Loading health library topics...
+Line 6377 (JSX Text): Verified
+Line 6393 (JSX Text): MedlinePlus / NLM
+Line 6425 (JSX Text): English Original
+Line 6435 (Title): Close Article (Esc)
+Line 6488 (JSX Text): Medical Summary & Guidelines
+Line 6495 (JSX Text): Key Highlights
+Line 6502 (JSX Text): Categories & Health Groups
+Line 6515 (JSX Text): Source Authority:
+Line 6718 (JSX Text): Caregiver Alerts Active
+Line 6719 (JSX Text): Auto SMS via Twilio on Missed Doses
+Line 6923 (Placeholder): e.g. Paracetamol, Metformin
+Line 6934 (Placeholder): e.g. 500mg after meal
+Line 6970 (JSX Text): Frequency
+Line 6976 (JSX Text): Daily
+Line 6977 (JSX Text): Weekly
+Line 6978 (JSX Text): As Needed
+Line 6983 (JSX Text): Start Date
+Line 7004 (Placeholder): +15005550006
+Line 7014 (Placeholder): e.g. Son / Doctor
+Line 7026 (Placeholder): +15005550006
+Line 7138 (JSX Text): Connecting to healthcare services...

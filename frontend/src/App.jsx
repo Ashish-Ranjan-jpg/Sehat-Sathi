@@ -299,7 +299,7 @@ function PasswordStrengthIndicator({ password }) {
     <div className={`pwd-strength-container ${isActive ? "is-active" : ""}`}>
       <div className="pwd-strength-box">
         <div className="pwd-strength-header">
-          <span className="pwd-strength-title">Password Strength:</span>
+          <span className="pwd-strength-title">{t("auth.passwordStrength")}</span>
           <span className={`pwd-strength-label pwd-strength-label--${strengthClass}`}>
             {strengthLabel}
           </span>
@@ -728,7 +728,7 @@ function LoginScreen({ onLoginSuccess, onGoRegister, onGoLanding }) {
         </div>
         <div className="auth-panel__brand"><BrandMark light onClick={onGoLanding} /></div>
         <div className="auth-panel__copy">
-          <h2>Medical documents, explained in your own language.</h2>
+          <h2>{t("landing.heroTitle")}</h2>
           <p>
             Upload a prescription or discharge summary and get it back simplified
             and translated — so the people relying on it can actually understand it.
@@ -737,8 +737,8 @@ function LoginScreen({ onLoginSuccess, onGoRegister, onGoLanding }) {
       </div>
       <div className="auth-form-side">
         <div className="auth-card">
-          <h1>Log in</h1>
-          <p className="lead">Welcome back. Enter your credentials to sign in.</p>
+          <h1>{t("nav.login")}</h1>
+          <p className="lead">{t("auth.welcomeBack")}</p>
 
           {error && (
             <div className="alert alert--error">
@@ -775,7 +775,7 @@ function LoginScreen({ onLoginSuccess, onGoRegister, onGoLanding }) {
             <Field label="Email address">
               <input
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t("auth.emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -877,7 +877,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
         </div>
         <div className="auth-panel__brand"><BrandMark light onClick={onGoLanding} /></div>
         <div className="auth-panel__copy">
-          <h2>Built for the person who has to explain the prescription twice.</h2>
+          <h2>{t("auth.builtFor")}</h2>
           <p>
             Whether you're a patient managing your own care or a health worker
             supporting several families, your documents and their history stay
@@ -887,8 +887,8 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
       </div>
       <div className="auth-form-side">
         <div className="auth-card" style={{ maxWidth: 420 }}>
-          <h1>Create an account</h1>
-          <p className="lead">It takes about a minute.</p>
+          <h1>{t("nav.createAccount")}</h1>
+          <p className="lead">{t("auth.takesAMinute")}</p>
 
           {error && (
             <div className="alert alert--error">
@@ -925,7 +925,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
             <Field label="Full name">
               <input
                 type="text"
-                placeholder="e.g. Ramesh Kumar"
+                placeholder={t("auth.namePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -934,7 +934,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
             <Field label="Email address">
               <input
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t("auth.emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -955,7 +955,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
                   <Field label="Age">
                     <input
                       type="number"
-                      placeholder="34"
+                      placeholder={t("auth.agePlaceholder")}
                       value={age}
                       onChange={(e) => setAge(e.target.value)}
                     />
@@ -971,7 +971,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
                 <Field label="Phone number">
                   <input
                     type="tel"
-                    placeholder="98765 43210"
+                    placeholder={t("auth.phonePlaceholder")}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                   />
@@ -995,7 +995,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
                   type="text"
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="ADMIN-..."
+                  placeholder={t("auth.adminCodePlaceholder")}
                   required
                 />
               </Field>
@@ -1009,7 +1009,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
                     type="text"
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value)}
-                    placeholder="HOSPITAL-..."
+                    placeholder={t("auth.hospitalCodePlaceholder")}
                     required
                   />
                 </Field>
@@ -1017,7 +1017,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
                   <Field label="Employee ID">
                     <input
                       type="text"
-                      placeholder="e.g. EMP-1024"
+                      placeholder={t("auth.empIdPlaceholder")}
                       value={employeeId}
                       onChange={(e) => setEmployeeId(e.target.value)}
                     />
@@ -1025,7 +1025,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
                   <Field label="Department">
                     <input
                       type="text"
-                      placeholder="e.g. Community Health"
+                      placeholder={t("auth.deptPlaceholder")}
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
                     />
@@ -1286,7 +1286,7 @@ function NotificationBellDrawer({ onNav }) {
                 type="button"
                 className="btn-icon-subtle"
                 onClick={() => setIsOpen(false)}
-                title="Close"
+                title={t("common.close")}
               >
                 <X size={15} />
               </button>
@@ -1378,7 +1378,7 @@ function NotificationBellDrawer({ onNav }) {
                               type="button"
                               className="notif-mini-btn"
                               onClick={(e) => handleMarkRead(item.id, e)}
-                              title="Mark as read"
+                              title={t("common.markRead")}
                             >
                               <Check size={12} /> Mark read
                             </button>
@@ -1387,7 +1387,7 @@ function NotificationBellDrawer({ onNav }) {
                             type="button"
                             className="notif-mini-btn danger"
                             onClick={(e) => handleDeleteSingle(item.id, e)}
-                            title="Delete notification"
+                            title={t("common.deleteNotif")}
                           >
                             <X size={12} />
                           </button>
@@ -1593,7 +1593,7 @@ function Pagination({ currentPage, totalItems, pageSize = 5, onPageChange }) {
           className="pagination-btn"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          title="Previous page"
+          title={t("common.prevPage")}
         >
           <ChevronLeft size={16} />
         </button>
@@ -1610,7 +1610,7 @@ function Pagination({ currentPage, totalItems, pageSize = 5, onPageChange }) {
           className="pagination-btn"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          title="Next page"
+          title={t("common.nextPage")}
         >
           <ChevronRight size={16} />
         </button>
@@ -1798,7 +1798,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
                           className="btn btn--secondary"
                           style={{ padding: "6px 10px", fontSize: 12 }}
                           onClick={(e) => handleDownloadDoc(e, doc)}
-                          title="Download original document"
+                          title={t("dashboard.downloadOriginal")}
                         >
                           <Download size={14} />
                         </button>
@@ -1856,7 +1856,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
                       className="btn btn--secondary btn--sm"
                       onClick={() => onNav("reminders", { medicine_name: m.name, dosage: `${m.dosage || ''} ${m.frequency || ''}`.trim() })}
                       style={{ fontSize: 11, padding: "4px 8px" }}
-                      title="Schedule Twilio Reminder"
+                      title={t("dashboard.scheduleReminder")}
                     >
                       <AlarmClock size={12} /> {t("reminders.scheduleBtn")}
                     </button>
@@ -1878,15 +1878,15 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13, color: "var(--ink-soft)" }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Total Stored Records:</span>
+                <span>{t("dashboard.totalRecords")}</span>
                 <strong style={{ color: "var(--ink)" }}>{documents.length}</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Preferred Language:</span>
+                <span>{t("dashboard.preferredLang")}</span>
                 <span className="badge badge--teal">{getLanguageName(patient?.preferred_language || "Hindi")}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Last Updated:</span>
+                <span>{t("dashboard.lastUpdated")}</span>
                 <strong style={{ color: "var(--ink)" }}>
                   {documents[0]?.uploaded_at ? new Date(documents[0].uploaded_at).toLocaleDateString() : "No uploads yet"}
                 </strong>
@@ -1898,7 +1898,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
           <div className="side-card">
             <div className="side-card__header">
               <div className="side-card__icon"><Sparkles size={16} /></div>
-              <h3 className="side-card__title">Doctor Shorthand Guide</h3>
+              <h3 className="side-card__title">{t("dashboard.shorthandGuide")}</h3>
             </div>
             <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "0 0 10px 0" }}>
               Quick guide to understanding medicine timing symbols on your prescriptions:
@@ -1906,19 +1906,19 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
             <div className="cheat-sheet-grid">
               <div className="cheat-sheet-item">
                 <span className="cheat-sheet-code">1 - 0 - 1</span>
-                <span className="cheat-sheet-desc">Morning & Evening</span>
+                <span className="cheat-sheet-desc">{t("dashboard.morningEvening")}</span>
               </div>
               <div className="cheat-sheet-item">
                 <span className="cheat-sheet-code">1 - 1 - 1</span>
-                <span className="cheat-sheet-desc">Thrice a day</span>
+                <span className="cheat-sheet-desc">{t("dashboard.thriceDaily")}</span>
               </div>
               <div className="cheat-sheet-item">
                 <span className="cheat-sheet-code">OD / BD</span>
-                <span className="cheat-sheet-desc">Once / Twice daily</span>
+                <span className="cheat-sheet-desc">{t("dashboard.onceTwice")}</span>
               </div>
               <div className="cheat-sheet-item">
                 <span className="cheat-sheet-code">AC / PC</span>
-                <span className="cheat-sheet-desc">Before / After meals</span>
+                <span className="cheat-sheet-desc">{t("dashboard.beforeAfter")}</span>
               </div>
             </div>
           </div>
@@ -2078,8 +2078,8 @@ function CameraModal({ isOpen, onClose, onCapture }) {
             <>
               <video ref={videoRef} autoPlay playsInline muted className="camera-video" />
               <div className="camera-guide-overlay">
-                <span className="camera-guide-text">Position prescription or document within frame</span>
-                <span className="camera-guide-text">Hold steady for sharp OCR text</span>
+                <span className="camera-guide-text">{t("upload.cameraFrameInstruction")}</span>
+                <span className="camera-guide-text">{t("upload.cameraSteadyInstruction")}</span>
               </div>
             </>
           )}
@@ -2110,7 +2110,7 @@ function CameraModal({ isOpen, onClose, onCapture }) {
                   type="button"
                   className="shutter-btn"
                   onClick={takeSnapshot}
-                  title="Take photo"
+                  title={t("upload.takePhotoButton")}
                 >
                   <Camera size={26} />
                 </button>
@@ -2286,7 +2286,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
         <div className="upload-main-form">
           {role === "healthcare_worker" && (
             <div className="section">
-              <h2>Patient Assignment</h2>
+              <h2>{t("upload.patientAssignment")}</h2>
               <Field label="Select patient" hint="Attach this medical document to an existing patient profile">
                 <select
                   value={selectedPatientId}
@@ -2305,7 +2305,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
 
           <form onSubmit={handleUpload}>
             <div className="section">
-              <h2>Document Source</h2>
+              <h2>{t("upload.docSource")}</h2>
 
               {/* Hidden File Input */}
               <input
@@ -2347,7 +2347,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                       className="btn btn--secondary"
                       onClick={() => setIsCameraOpen(true)}
                     >
-                      <Camera size={15} /> Take photo with camera
+                      <Camera size={15} /> {t("upload.takePhotoButton")} with camera
                     </button>
                   </div>
                 </div>
@@ -2392,7 +2392,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
 
             {loading ? (
               <div className="upload-stepper">
-                <div className="upload-stepper__title">Processing Document with AI</div>
+                <div className="upload-stepper__title">{t("upload.processingTitle")}</div>
                 <div className="stepper-steps">
                   {UPLOAD_STEPS.map((step, idx) => {
                     const isDone = idx < activeStepIndex;
@@ -2428,7 +2428,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
             <div className="side-card">
               <div className="side-card__header">
                 <div className="side-card__icon"><Sparkles size={16} /></div>
-                <h3 className="side-card__title">Upload Guide & Best Practices</h3>
+                <h3 className="side-card__title">{t("upload.guideTitle")}</h3>
               </div>
               <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: "0 0 12px 0", lineHeight: 1.5 }}>
                 Follow these tips to get the highest OCR accuracy for doctor prescriptions and lab reports:
@@ -2437,28 +2437,28 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                 <div className="guide-tip-item">
                   <Camera size={16} className="guide-tip-icon" />
                   <div>
-                    <strong style={{ color: "var(--ink)" }}>Sharp & Well-Lit Photos</strong>
-                    <p style={{ margin: "2px 0 0" }}>Avoid dark shadows or blurry angles over handwritten notes.</p>
+                    <strong style={{ color: "var(--ink)" }}>{t("upload.guidePoint1Title")}</strong>
+                    <p style={{ margin: "2px 0 0" }}>{t("upload.guidePoint1Text")}</p>
                   </div>
                 </div>
                 <div className="guide-tip-item">
                   <FileText size={16} className="guide-tip-icon" />
                   <div>
-                    <strong style={{ color: "var(--ink)" }}>Supported Documents</strong>
-                    <p style={{ margin: "2px 0 0" }}>Prescriptions, lab test reports, discharge summaries, and medical certificates.</p>
+                    <strong style={{ color: "var(--ink)" }}>{t("upload.guidePoint2Title")}</strong>
+                    <p style={{ margin: "2px 0 0" }}>{t("upload.guidePoint2Text")}</p>
                   </div>
                 </div>
                 <div className="guide-tip-item">
                   <ShieldCheck size={16} className="guide-tip-icon" />
                   <div>
                     <strong style={{ color: "var(--ink)" }}>100% Private & Encrypted</strong>
-                    <p style={{ margin: "2px 0 0" }}>Medical files are processed securely for patient care only.</p>
+                    <p style={{ margin: "2px 0 0" }}>{t("upload.guidePoint3Text")}</p>
                   </div>
                 </div>
                 <div className="guide-tip-item">
                   <Globe size={16} className="guide-tip-icon" />
                   <div>
-                    <strong style={{ color: "var(--ink)" }}>Instant Regional Translation</strong>
+                    <strong style={{ color: "var(--ink)" }}>{t("upload.instantTranslation")}</strong>
                     <p style={{ margin: "2px 0 0" }}>Explanations are simplified and translated into 10+ local languages.</p>
                   </div>
                 </div>
@@ -2476,7 +2476,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                 ) : (
                   <div style={{ textAlign: "center", padding: 32, color: "var(--ink-soft)" }}>
                     <FileText size={48} color="var(--teal)" style={{ marginBottom: 8 }} />
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>PDF Document Selected</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>{t("upload.pdfSelected")}</p>
                     <span style={{ fontSize: 12 }}>{fileName}</span>
                   </div>
                 )}
@@ -2491,7 +2491,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                   <span>{file.size ? `${(file.size / 1024).toFixed(1)} KB` : "—"}</span>
                 </div>
                 <div className="preview-card__meta-row">
-                  <span>Target Language:</span>
+                  <span>{t("profile.targetLang")}:</span>
                   <span className="badge badge--teal">{getLanguageName(targetLang)}</span>
                 </div>
                 <button
@@ -2663,13 +2663,13 @@ function TTSPlayer({ extraction }) {
             className="tts-btn tts-btn--stop"
             onClick={handleStop}
             disabled={!isActive}
-            title="Stop"
+            title={t("audio.stop")}
           >
             <Square size={13} fill={isActive ? "currentColor" : "none"} />
           </button>
 
           {isPlaying ? (
-            <button className="tts-btn tts-btn--main" onClick={handlePause} title="Pause">
+            <button className="tts-btn tts-btn--main" onClick={handlePause} title={t("audio.pause")}>
               <Pause size={16} fill="currentColor" /> Pause
             </button>
           ) : (
@@ -2718,7 +2718,7 @@ function TTSPlayer({ extraction }) {
       </div>
 
       <details className="tts-script-preview">
-        <summary>Preview speech script</summary>
+        <summary>{t("audio.previewScript")}</summary>
         <p>{script || "No content available to speak."}</p>
       </details>
     </div>
@@ -2947,7 +2947,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
         type="button"
         className="chatbot-fab-btn"
         onClick={() => setIsOpen(true)}
-        title="Ask Sehat Saathi (AI Medical Assistant)"
+        title={t("assistant.title")}
       >
         <div className="chatbot-fab-icon">
           <Bot size={22} color="#ffffff" />
@@ -2991,7 +2991,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
             type="button"
             className="chatbot-close-btn"
             onClick={() => setIsOpen(false)}
-            title="Minimize Assistant"
+            title={t("assistant.minimize")}
           >
             <X size={18} />
           </button>
@@ -3189,7 +3189,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
       active="dashboard"
       onNav={onNav}
       onLogout={onLogout}
-      title={extraction.document_type || docRecord?.original_filename || "Document Details"}
+      title={extraction.document_type || docRecord?.original_filename || t("docDetail.docDetails")}
       subtitle={
         docRecord
           ? `Uploaded ${new Date(docRecord.uploaded_at).toLocaleString()} · Language: ${getLanguageName(extraction.language)}`
@@ -3228,7 +3228,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
                   <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, fontSize: 18, color: "var(--ink)" }}>
                     <Pill size={20} color="var(--teal)" /> {t("dashboard.prescribedMeds")} ({medications.length})
                   </h2>
-                  <span className="badge badge--teal" style={{ fontSize: 11 }}>Structured AI Extraction</span>
+                  <span className="badge badge--teal" style={{ fontSize: 11 }}>{t("docDetail.structuredExtraction")}</span>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -3291,11 +3291,11 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
             )}
 
             <div className="section" style={{ marginTop: 24 }}>
-              <h2>Plain Language Explanations</h2>
+              <h2>{t("docDetail.plainLanguage")}</h2>
               {extraction.simplified_explanation && (
                 <div className="explanation-block">
                   <div className="explanation-block__header">
-                    <span className="lang-tag badge badge--teal">English (Simplified)</span>
+                    <span className="lang-tag badge badge--teal">{t("docDetail.englishSimplified")}</span>
                     <CopyButton text={extraction.simplified_explanation} />
                   </div>
                   <p style={{ margin: 0 }}>{extraction.simplified_explanation}</p>
@@ -3317,7 +3317,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
             {extraction.raw_text && (
               <div className="section" style={{ border: "none" }}>
                 <details className="raw-text">
-                  <summary>Show raw extracted OCR text</summary>
+                  <summary>{t("docDetail.showRawOCR")}</summary>
                   <pre>{extraction.raw_text}</pre>
                 </details>
               </div>
@@ -3333,7 +3333,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
             <div className="side-card">
               <div className="side-card__header">
                 <FileText size={18} color="var(--teal)" />
-                <h3 className="side-card__title">Document Details</h3>
+                <h3 className="side-card__title">{t("docDetail.docDetails")}</h3>
               </div>
 
               <div className="doc-meta-list">
@@ -3344,7 +3344,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
                   </span>
                 </div>
                 <div className="doc-meta-item">
-                  <span className="doc-meta-label">Target Language:</span>
+                  <span className="doc-meta-label">{t("profile.targetLang")}:</span>
                   <span className="badge badge--gold">{getLanguageName(extraction.language)}</span>
                 </div>
                 <div className="doc-meta-item">
@@ -3463,11 +3463,11 @@ function ProfileScreen({ user, patient, onNav, onLogout, onProfileUpdated }) {
 Name: ${name || 'N/A'}
 Patient ID: ${patient?.id || 'N/A'}
 Age / Gender: ${age ? age + ' yrs' : 'N/A'} / ${gender || 'N/A'}
-Blood Group: ${bloodGroup || 'Unspecified'}
+{t("profile.bloodGroup")}: ${bloodGroup || 'Unspecified'}
 Emergency Contact: ${emergencyContact || 'Not provided'}
 Known Allergies: ${allergies || 'None listed'}
 Medical Conditions: ${medicalConditions || 'None listed'}
-Preferred Language: ${preferredLang || 'Hindi'}
+{t("dashboard.preferredLang")} ${preferredLang || 'Hindi'}
 ===========================================`;
     navigator.clipboard.writeText(passText);
     setCopiedPass(true);
@@ -3570,7 +3570,7 @@ Preferred Language: ${preferredLang || 'Hindi'}
                     type="button"
                     className="btn-icon-subtle"
                     onClick={handleCopyId}
-                    title="Copy Patient ID"
+                    title={t("profile.copyId")}
                   >
                     {copiedId ? <Check size={13} style={{ color: "var(--teal)" }} /> : <Copy size={13} />}
                   </button>
@@ -3586,7 +3586,7 @@ Preferred Language: ${preferredLang || 'Hindi'}
 
           <div className="profile-completion-box">
             <div className="profile-completion-header">
-              <span className="completion-title">Profile Completeness</span>
+              <span className="completion-title">{t("profile.completeness")}</span>
               <span className="completion-percent">{completionScore}%</span>
             </div>
             <div className="profile-completion-bar-bg">
@@ -3608,21 +3608,21 @@ Preferred Language: ${preferredLang || 'Hindi'}
               <FileText size={20} className="stat-icon" />
               <div>
                 <div className="stat-value">{docCount}</div>
-                <div className="stat-label">Uploaded Records</div>
+                <div className="stat-label">{t("profile.uploadedRecords")}</div>
               </div>
             </div>
             <div className="profile-stat-card">
               <Globe size={20} className="stat-icon" />
               <div>
                 <div className="stat-value">{preferredLang}</div>
-                <div className="stat-label">Target Language</div>
+                <div className="stat-label">{t("profile.targetLang")}</div>
               </div>
             </div>
             <div className="profile-stat-card">
               <Activity size={20} className="stat-icon" />
               <div>
                 <div className="stat-value">{bloodGroup || "Not Set"}</div>
-                <div className="stat-label">Blood Group</div>
+                <div className="stat-label">{t("profile.bloodGroup")}</div>
               </div>
             </div>
           </div>
@@ -3636,8 +3636,8 @@ Preferred Language: ${preferredLang || 'Hindi'}
                 <User size={20} />
               </div>
               <div>
-                <h3 className="profile-card__title">Personal Information</h3>
-                <p className="profile-card__subtitle">Basic identity details for identification on records</p>
+                <h3 className="profile-card__title">{t("profile.personalInfo")}</h3>
+                <p className="profile-card__subtitle">{t("profile.personalInfoSub")}</p>
               </div>
             </div>
 
@@ -3690,15 +3690,15 @@ Preferred Language: ${preferredLang || 'Hindi'}
                 <Activity size={20} />
               </div>
               <div>
-                <h3 className="profile-card__title">Medical Baseline & Emergency Info</h3>
-                <p className="profile-card__subtitle">Essential clinical context used in emergency situations and AI processing</p>
+                <h3 className="profile-card__title">{t("profile.medicalBaseline")}</h3>
+                <p className="profile-card__subtitle">{t("profile.medicalBaselineSub")}</p>
               </div>
             </div>
 
             <div className="profile-form-grid">
-              <Field label="Blood Group">
+              <Field label={t("profile.bloodGroup")}>
                 <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)}>
-                  <option value="">Select Blood Group</option>
+                  <option value="">Select {t("profile.bloodGroup")}</option>
                   <option value="A+">A+</option>
                   <option value="A-">A-</option>
                   <option value="B+">B+</option>
@@ -3715,7 +3715,7 @@ Preferred Language: ${preferredLang || 'Hindi'}
                   type="tel"
                   value={emergencyContact}
                   onChange={(e) => setEmergencyContact(e.target.value)}
-                  placeholder="Primary emergency contact"
+                  placeholder={t("profile.emergencyContactPlaceholder")}
                 />
               </Field>
 
@@ -3725,7 +3725,7 @@ Preferred Language: ${preferredLang || 'Hindi'}
                     type="text"
                     value={allergies}
                     onChange={(e) => setAllergies(e.target.value)}
-                    placeholder="List any known allergies"
+                    placeholder={t("profile.allergiesPlaceholder")}
                   />
                 </Field>
               </div>
@@ -3804,7 +3804,7 @@ Preferred Language: ${preferredLang || 'Hindi'}
                   <span className="pass-val">{age ? `${age} yrs` : "—"} / {gender || "—"}</span>
                 </div>
                 <div className="pass-detail-item">
-                  <span className="pass-label">Blood Group</span>
+                  <span className="pass-label">{t("profile.bloodGroup")}</span>
                   <span className="pass-val pass-highlight">{bloodGroup || "Not specified"}</span>
                 </div>
                 <div className="pass-detail-item">
@@ -5259,7 +5259,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
               <Field label="Phone number">
                 <input
                   type="tel"
-                  placeholder="98765 43210"
+                  placeholder={t("auth.phonePlaceholder")}
                   value={newPatientPhone}
                   onChange={(e) => setNewPatientPhone(e.target.value)}
                 />
