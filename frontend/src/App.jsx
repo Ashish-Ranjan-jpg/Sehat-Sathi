@@ -77,13 +77,13 @@ import { SUPPORTED_LANGUAGES, t as translate } from "./i18n";
 // GLOBAL LANGUAGE CONTEXT & SELECTOR
 // ---------------------------------------------------------------------------
 
-export const LanguageContext = React.createContext({
+const LanguageContext = React.createContext({
   language: "hi",
   setLanguage: () => {},
   t: (key) => translate(key, "hi"),
 });
 
-export function useAppLanguage() {
+function useAppLanguage() {
   return React.useContext(LanguageContext);
 }
 
@@ -92,7 +92,7 @@ function LanguageSelector({ compact = false }) {
 
   return (
     <div className={`lang-selector-wrap ${compact ? "lang-selector--compact" : ""}`}>
-      <Globe size={compact ? 13 : 15} className="lang-globe-icon" />
+      <Globe size={compact ? 12 : 14} className="lang-globe-icon" />
       <select
         value={language}
         onChange={(e) => setLanguage(e.target.value)}
@@ -101,7 +101,7 @@ function LanguageSelector({ compact = false }) {
       >
         {SUPPORTED_LANGUAGES.map((l) => (
           <option key={l.code} value={l.code}>
-            {l.flag} {l.name}
+            {compact ? `${l.flag} ${l.code.toUpperCase()}` : `${l.flag} ${l.name}`}
           </option>
         ))}
       </select>
@@ -155,15 +155,16 @@ function showConfirm({ title, message, onConfirm, confirmLabel = "Confirm", dang
 // SHARED PIECES
 // ---------------------------------------------------------------------------
 
-function BrandMark({ light, onClick }) {
+function BrandMark({ light, onClick, size, style }) {
   return (
     <span
       className="ss-wordmark"
       onClick={onClick}
       style={{
         color: light ? "#EFEAD9" : "var(--ink)",
-        fontSize: 20,
-        cursor: onClick ? "pointer" : "inherit"
+        ...(size ? { fontSize: size } : {}),
+        cursor: onClick ? "pointer" : "inherit",
+        ...style
       }}
     >
       Sehat Saathi
@@ -177,6 +178,7 @@ function PageTransition({ children }) {
 
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
+  const { t } = useAppLanguage();
 
   async function handleCopy() {
     if (!text) return;
@@ -195,10 +197,10 @@ function CopyButton({ text }) {
       type="button"
       className={`copy-btn ${copied ? "copy-btn--copied" : ""}`}
       onClick={handleCopy}
-      title="Copy to clipboard"
+      title={t("common.copyToClipboard")}
     >
       {copied ? <Check size={13} strokeWidth={2.5} /> : <Copy size={13} strokeWidth={2} />}
-      <span>{copied ? "Copied" : "Copy"}</span>
+      <span>{copied ? t("common.copied") : t("common.copy")}</span>
     </button>
   );
 }
@@ -509,16 +511,16 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
     },
     {
       id: "simplify",
-      badge: "Plain Language",
-      title: "Medical Jargon Translator",
-      text: "Complex medical terms like '1-0-1' or 'antipyretic' are simplified into plain language instructions so patients and families know exactly what to do and when.",
+      badge: t("landing.jargonBadge"),
+      title: t("landing.jargonTitle"),
+      text: t("landing.jargonText"),
       icon: <CheckCircle2 size={20} />,
       imageSrc: "/images/landing-simplify.jpg",
       tags: ["Clear Terms", "Dosage Instructions", "Patient-Friendly"],
     },
     {
       id: "audio",
-      badge: "Voice & Audio",
+      badge: t("landing.audioBadge"),
       title: t("landing.audioAssistanceTitle"),
       text: t("landing.audioAssistanceText"),
       icon: <Volume2 size={20} />,
@@ -527,9 +529,9 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
     },
     {
       id: "portal",
-      badge: "Healthcare Staff",
-      title: "Community Worker Portal",
-      text: "Equip clinic staff and ASHA workers to manage patient records, upload documents on behalf of patients, and inspect AI processing pipelines seamlessly.",
+      badge: t("landing.workerBadge"),
+      title: t("landing.workerPortalTitle"),
+      text: t("landing.workerPortalText"),
       icon: <Users size={20} />,
       imageSrc: "/images/landing-portal.jpg",
       tags: ["Multi-Patient", "Worker Tools", "Pipeline Inspector"],
@@ -691,7 +693,7 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
           <span className="landing-section__badge">{t("landing.howItWorks")}</span>
           <h2 className="landing-section__title">{t("landing.howItWorks")}</h2>
           <p className="landing-section__subtitle">
-            From document capture to translated audio explanations in seconds.
+          {t("landing.howItWorksSub")}
           </p>
         </div>
 
@@ -742,7 +744,7 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
           <BrandMark />
         </div>
         <p style={{ margin: 0 }}>
-          Sehat Saathi — Empowering healthcare comprehension across regional India.
+          {t("landing.footerTagline")}
         </p>
       </footer>
     </div>
@@ -774,7 +776,7 @@ function LoginScreen({ onLoginSuccess, onGoRegister, onGoLanding }) {
       const res = await api.login(email, password);
       if (res.user.role !== role) {
         api.logout();
-        const roleNames = { patient: "Patient", healthcare_worker: "Health worker", admin: "Admin" };
+        const roleNames = { patient: t("role.patient"), healthcare_worker: t("role.worker"), admin: t("role.admin") };
         setError(`This account is registered as ${roleNames[res.user.role] || res.user.role}. Please select the ${roleNames[res.user.role] || res.user.role} role tab to log in.`);
         return;
       }
@@ -839,7 +841,7 @@ function LoginScreen({ onLoginSuccess, onGoRegister, onGoLanding }) {
           </div>
 
           <form onSubmit={handleSubmit}>
-            <Field label="Email address">
+            <Field label={t("auth.emailLabel")}>
               <input
                 type="email"
                 placeholder={t("auth.emailPlaceholder")}
@@ -849,7 +851,7 @@ function LoginScreen({ onLoginSuccess, onGoRegister, onGoLanding }) {
               />
             </Field>
             <PasswordField
-              label="Password"
+              label={t("auth.passwordLabel")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -970,26 +972,26 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
               className={role === "patient" ? "active" : ""}
               onClick={() => setRole("patient")}
             >
-              Patient
+              {t("role.patient")}
             </button>
             <button
               type="button"
               className={role === "healthcare_worker" ? "active" : ""}
               onClick={() => setRole("healthcare_worker")}
             >
-              Health worker
+              {t("role.worker")}
             </button>
             <button
               type="button"
               className={role === "admin" ? "active" : ""}
               onClick={() => setRole("admin")}
             >
-              Admin
+              {t("role.admin")}
             </button>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <Field label="Full name">
+            <Field label={t("profile.fullName")}>
               <input
                 type="text"
                 placeholder={t("auth.namePlaceholder")}
@@ -998,7 +1000,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
                 required
               />
             </Field>
-            <Field label="Email address">
+            <Field label={t("auth.emailLabel")}>
               <input
                 type="email"
                 placeholder={t("auth.emailPlaceholder")}
@@ -1008,18 +1010,18 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
               />
             </Field>
             <PasswordField
-              label="Create password"
+              label={t("auth.createPasswordLabel")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
-              hint="Must be at least 8 characters"
+              hint={t("auth.passwordMinLength")}
             />
             <PasswordStrengthIndicator password={password} />
 
             {role === "patient" ? (
               <>
                 <div className="field-row">
-                  <Field label="Age">
+                  <Field label={t("profile.age")}>
                     <input
                       type="number"
                       placeholder={t("auth.agePlaceholder")}
@@ -1027,15 +1029,15 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
                       onChange={(e) => setAge(e.target.value)}
                     />
                   </Field>
-                  <Field label="Gender">
+                  <Field label={t("profile.gender")}>
                     <select value={gender} onChange={(e) => setGender(e.target.value)}>
-                      <option>Female</option>
-                      <option>Male</option>
-                      <option>Other</option>
+                      <option value="Female">{t("auth.genderFemale")}</option>
+                      <option value="Male">{t("auth.genderMale")}</option>
+                      <option value="Other">{t("auth.genderOther")}</option>
                     </select>
                   </Field>
                 </div>
-                <Field label="Phone number">
+                <Field label={t("profile.phone")}>
                   <input
                     type="tel"
                     placeholder={t("auth.phonePlaceholder")}
@@ -1043,7 +1045,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
                     onChange={(e) => setPhone(e.target.value)}
                   />
                 </Field>
-                <Field label="Preferred language" hint="Documents will be translated into this language by default">
+                <Field label={t("dashboard.preferredLang")} hint={t("profile.langSettingsSub")}>
                   <select value={preferredLang} onChange={(e) => setPreferredLang(e.target.value)}>
                     {LANGUAGES.map((l) => (
                       <option key={l.code} value={l.name}>
@@ -1055,8 +1057,8 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
               </>
             ) : role === "admin" ? (
               <Field
-                label="Admin Invite Code"
-                hint="System administrator authorization code."
+                label={t("auth.adminKeyLabel")}
+                hint={t("auth.adminKeyHint")}
               >
                 <input
                   type="text"
@@ -1069,8 +1071,8 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
             ) : (
               <>
                 <Field
-                  label="Healthcare Worker Invite Code"
-                  hint="Hospital authorization code required to verify staff credentials."
+                  label={t("auth.hospitalCodeLabel")}
+                  hint={t("auth.hospitalCodeHint")}
                 >
                   <input
                     type="text"
@@ -1081,7 +1083,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
                   />
                 </Field>
                 <div className="field-row">
-                  <Field label="Employee ID">
+                  <Field label={t("auth.empIdLabel")}>
                     <input
                       type="text"
                       placeholder={t("auth.empIdPlaceholder")}
@@ -1089,7 +1091,7 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
                       onChange={(e) => setEmployeeId(e.target.value)}
                     />
                   </Field>
-                  <Field label="Department">
+                  <Field label={t("auth.deptLabel")}>
                     <input
                       type="text"
                       placeholder={t("auth.deptPlaceholder")}
@@ -1098,10 +1100,10 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
                     />
                   </Field>
                 </div>
-                <Field label="Contact Phone">
+                <Field label={t("profile.phone")}>
                   <input
                     type="tel"
-                    placeholder="e.g. 98765 43210"
+                    placeholder={t("auth.phonePlaceholder")}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                   />
@@ -1110,14 +1112,14 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
             )}
 
             <button type="submit" className="btn btn--primary btn--block" disabled={loading} style={{ marginTop: 12 }}>
-              {loading ? <span className="spinner" /> : "Create account"}
+              {loading ? <span className="spinner" /> : t("nav.createAccount")}
             </button>
           </form>
 
           <p className="auth-switch">
-            Already have an account?{" "}
+            {t("auth.alreadyHaveAccount")}{" "}
             <a href="#" onClick={(e) => { e.preventDefault(); onGoLogin(); }} style={{ color: "var(--teal)", fontWeight: 600 }}>
-              Log in
+              {t("nav.login")}
             </a>
           </p>
         </div>
@@ -1794,7 +1796,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
       onLogout={onLogout}
       userName={patient?.name || t("role.patient")}
       title={t("dashboard.title")}
-      subtitle="Here are your uploaded medical records, simplified prescriptions, and translations."
+      subtitle={t("dashboard.subtitle")}
     >
       {error && (
         <div className="alert alert--error">
@@ -1822,7 +1824,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
                   </div>
                 )}
                 <button className="btn btn--secondary" onClick={loadDocs} style={{ height: 34, padding: "0 12px", fontSize: 13, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, boxSizing: "border-box" }}>
-                  <RefreshCw size={13} /> Refresh
+                  <RefreshCw size={13} /> {t("common.refresh")}
                 </button>
               </div>
             </div>
@@ -1955,7 +1957,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span>{t("dashboard.lastUpdated")}</span>
                 <strong style={{ color: "var(--ink)" }}>
-                  {documents[0]?.uploaded_at ? new Date(documents[0].uploaded_at).toLocaleDateString() : "No uploads yet"}
+                  {documents[0]?.uploaded_at ? new Date(documents[0].uploaded_at).toLocaleDateString() : t("dashboard.noUploads")}
                 </strong>
               </div>
             </div>
@@ -1968,7 +1970,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
               <h3 className="side-card__title">{t("dashboard.shorthandGuide")}</h3>
             </div>
             <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "0 0 10px 0" }}>
-              Quick guide to understanding medicine timing symbols on your prescriptions:
+              {t("dashboard.shorthandGuideSub")}
             </p>
             <div className="cheat-sheet-grid">
               <div className="cheat-sheet-item">
@@ -2000,6 +2002,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
 // ---------------------------------------------------------------------------
 
 function CameraModal({ isOpen, onClose, onCapture }) {
+  const { t } = useAppLanguage();
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const [capturedImg, setCapturedImg] = useState(null);
@@ -2116,11 +2119,12 @@ function CameraModal({ isOpen, onClose, onCapture }) {
         <div className="camera-header">
           <h3 style={{ margin: 0, fontSize: 16, display: "flex", alignItems: "center", gap: 8 }}>
             <Camera size={18} color="var(--teal)" />
-            Take Document Photo
+            {t("upload.useCamera")}
           </h3>
           <button
             onClick={handleClose}
             style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", padding: 4 }}
+            title={t("common.close")}
           >
             <X size={20} />
           </button>
@@ -2136,7 +2140,7 @@ function CameraModal({ isOpen, onClose, onCapture }) {
                 onClick={handleClose}
                 style={{ color: "#fff", borderColor: "rgba(255,255,255,0.3)" }}
               >
-                Close and choose from files
+                {t("common.close")}
               </button>
             </div>
           ) : capturedImg ? (
@@ -2156,17 +2160,17 @@ function CameraModal({ isOpen, onClose, onCapture }) {
           {capturedImg ? (
             <>
               <button type="button" className="camera-tool-btn" onClick={handleRetake}>
-                <RefreshCw size={15} /> Retake
+                <RefreshCw size={15} /> {t("common.refresh")}
               </button>
               <button type="button" className="btn btn--primary" onClick={handleUsePhoto}>
-                <Check size={16} /> Use this photo
+                <Check size={16} /> {t("common.save")}
               </button>
             </>
           ) : (
             <>
               {devices.length > 1 ? (
                 <button type="button" className="camera-tool-btn" onClick={switchCamera}>
-                  <RefreshCw size={15} /> Switch camera
+                  <RefreshCw size={15} /> {t("common.refresh")}
                 </button>
               ) : (
                 <div style={{ width: 80 }} />
@@ -2184,7 +2188,7 @@ function CameraModal({ isOpen, onClose, onCapture }) {
               )}
 
               <button type="button" className="camera-tool-btn" onClick={handleClose}>
-                Cancel
+                {t("common.cancel")}
               </button>
             </>
           )}
@@ -2354,7 +2358,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
           {role === "healthcare_worker" && (
             <div className="section">
               <h2>{t("upload.patientAssignment")}</h2>
-              <Field label="Select patient" hint="Attach this medical document to an existing patient profile">
+              <Field label={t("upload.selectPatient")} hint={t("upload.selectPatientHint")}>
                 <select
                   value={selectedPatientId}
                   onChange={(e) => setSelectedPatientId(e.target.value)}
@@ -2407,14 +2411,14 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                       className="btn btn--secondary"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      <UploadCloud size={15} /> Choose file from device
+                      <UploadCloud size={15} /> {t("upload.chooseFile")}
                     </button>
                     <button
                       type="button"
                       className="btn btn--secondary"
                       onClick={() => setIsCameraOpen(true)}
                     >
-                      <Camera size={15} /> {t("upload.takePhotoButton")} with camera
+                      <Camera size={15} /> {t("upload.useCamera")}
                     </button>
                   </div>
                 </div>
@@ -2441,12 +2445,12 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                     onClick={handleClearFile}
                     style={{ padding: "6px 12px", fontSize: 12 }}
                   >
-                    Change / Retake
+                    {t("common.cancel")}
                   </button>
                 </div>
               )}
 
-              <Field label="Translate explanation into" hint="Select the Indian language for the patient explanation">
+              <Field label={t("upload.targetLang")} hint={t("upload.targetLangHint")}>
                 <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)}>
                   {LANGUAGES.map((l) => (
                     <option key={l.code} value={l.code}>
@@ -2534,8 +2538,8 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
           ) : (
             <div className="preview-card">
               <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--panel)" }}>
-                <h3 className="side-card__title" style={{ fontSize: 14 }}>Live Document Preview</h3>
-                <span className="badge badge--teal">Ready</span>
+                <h3 className="side-card__title" style={{ fontSize: 14 }}>{t("upload.livePreview")}</h3>
+                <span className="badge badge--teal">{t("common.ready")}</span>
               </div>
               <div className="preview-card__image-box">
                 {previewUrl ? (
@@ -2550,11 +2554,11 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
               </div>
               <div className="preview-card__details">
                 <div className="preview-card__meta-row">
-                  <span>File Name:</span>
+                  <span>{t("upload.fileName")}</span>
                   <strong style={{ color: "var(--ink)" }}>{fileName}</strong>
                 </div>
                 <div className="preview-card__meta-row">
-                  <span>File Size:</span>
+                  <span>{t("upload.fileSize")}</span>
                   <span>{file.size ? `${(file.size / 1024).toFixed(1)} KB` : "—"}</span>
                 </div>
                 <div className="preview-card__meta-row">
@@ -3019,7 +3023,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
         <div className="chatbot-fab-icon">
           <Bot size={22} color="#ffffff" />
         </div>
-        <span className="chatbot-fab-label">Ask Sehat Saathi AI</span>
+        <span className="chatbot-fab-label">{t("assistant.title")}</span>
         {messages.length > 1 && (
           <span className="chatbot-fab-badge">{messages.length - 1}</span>
         )}
@@ -3033,7 +3037,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
             <Bot size={20} color="#fff" />
           </div>
           <div>
-            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Ask Sehat Saathi</h3>
+            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{t("assistant.titleShort")}</h3>
             <p style={{ margin: 0, fontSize: 11, color: "var(--ink-soft)" }}>
               AI Health Assistant
             </p>
@@ -3111,12 +3115,12 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
                       {speakingMsgIdx === idx ? (
                         <>
                           <VolumeX size={13} strokeWidth={2} />
-                          <span>Stop</span>
+                          <span>{t("audio.stop")}</span>
                         </>
                       ) : (
                         <>
                           <Volume2 size={13} strokeWidth={2} />
-                          <span>Listen</span>
+                          <span>{t("audio.listen")}</span>
                         </>
                       )}
                     </button>
@@ -3321,8 +3325,8 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
                         </div>
 
                         <div style={{ fontSize: 13, color: "var(--ink-soft)", display: "flex", gap: 16, flexWrap: "wrap", marginTop: 4 }}>
-                          {med.frequency && <span><strong>Frequency:</strong> {med.frequency}</span>}
-                          {med.duration && <span><strong>Duration:</strong> {med.duration}</span>}
+                          {med.frequency && <span><strong>{t("docDetail.frequency")}</strong> {med.frequency}</span>}
+                          {med.duration && <span><strong>{t("docDetail.duration")}</strong> {med.duration}</span>}
                         </div>
 
                         {med.instruction && (
@@ -3405,7 +3409,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
 
               <div className="doc-meta-list">
                 <div className="doc-meta-item">
-                  <span className="doc-meta-label">Type:</span>
+                  <span className="doc-meta-label">{t("docDetail.type")}</span>
                   <span className="badge badge--teal" style={{ textTransform: "capitalize" }}>
                     {(extraction.document_type || "prescription").replace("_", " ")}
                   </span>
@@ -3415,13 +3419,13 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
                   <span className="badge badge--gold">{getLanguageName(extraction.language)}</span>
                 </div>
                 <div className="doc-meta-item">
-                  <span className="doc-meta-label">Uploaded:</span>
+                  <span className="doc-meta-label">{t("docDetail.uploaded")}</span>
                   <span style={{ fontSize: "13px", color: "var(--ink)", fontWeight: 500 }}>
                     {docRecord ? new Date(docRecord.uploaded_at).toLocaleDateString() : "N/A"}
                   </span>
                 </div>
                 <div className="doc-meta-item">
-                  <span className="doc-meta-label">File Name:</span>
+                  <span className="doc-meta-label">{t("upload.fileName")}</span>
                   <span style={{ fontSize: "12.5px", color: "var(--ink-soft)", wordBreak: "break-all" }}>
                     {docRecord?.original_filename || "medical_record"}
                   </span>
@@ -3606,7 +3610,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
         {success && (
           <div className="alert alert--success" style={{ marginBottom: 20 }}>
             <CheckCircle2 size={18} />
-            <span>Profile changes saved successfully!</span>
+            <span>{t("profile.savedSuccess")}</span>
           </div>
         )}
 
@@ -3709,42 +3713,42 @@ Medical Conditions: ${medicalConditions || 'None listed'}
             </div>
 
             <div className="profile-form-grid">
-              <Field label="Full name">
+              <Field label={t("profile.fullName")}>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Rahul Sharma"
+                  placeholder={t("auth.namePlaceholder")}
                   required
                 />
               </Field>
 
-              <Field label="Age">
+              <Field label={t("profile.age")}>
                 <input
                   type="number"
                   value={age}
                   onChange={(e) => setAge(e.target.value)}
-                  placeholder="e.g. 34"
+                  placeholder={t("auth.agePlaceholder")}
                   min="0"
                   max="120"
                 />
               </Field>
 
-              <Field label="Gender">
+              <Field label={t("profile.gender")}>
                 <select value={gender} onChange={(e) => setGender(e.target.value)}>
-                  <option value="Female">Female</option>
-                  <option value="Male">Male</option>
-                  <option value="Other">Other</option>
-                  <option value="Prefer not to say">Prefer not to say</option>
+                  <option value="Female">{t("auth.genderFemale")}</option>
+                  <option value="Male">{t("auth.genderMale")}</option>
+                  <option value="Other">{t("auth.genderOther")}</option>
+                  <option value="Prefer not to say">{t("auth.genderPreferNot")}</option>
                 </select>
               </Field>
 
-              <Field label="Phone number">
+              <Field label={t("profile.phone")}>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
+                  placeholder={t("auth.phonePlaceholder")}
                 />
               </Field>
             </div>
@@ -3777,7 +3781,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
                 </select>
               </Field>
 
-              <Field label="Emergency Contact Phone">
+              <Field label={t("profile.emergencyContact")}>
                 <input
                   type="tel"
                   value={emergencyContact}
@@ -3787,7 +3791,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
               </Field>
 
               <div className="profile-field-full">
-                <Field label="Known Allergies & Drug Sensitivities" hint="e.g. Penicillin, Sulfa drugs, Peanuts, Latex">
+                <Field label={t("profile.knownAllergies")} hint="e.g. Penicillin, Sulfa drugs, Peanuts, Latex">
                   <input
                     type="text"
                     value={allergies}
@@ -3798,12 +3802,12 @@ Medical Conditions: ${medicalConditions || 'None listed'}
               </div>
 
               <div className="profile-field-full">
-                <Field label="Chronic Medical Conditions / Health Notes" hint="e.g. Type 2 Diabetes, Hypertension, Asthma">
+                <Field label={t("profile.medicalBaseline")} hint="e.g. Type 2 Diabetes, Hypertension, Asthma">
                   <textarea
                     rows={2}
                     value={medicalConditions}
                     onChange={(e) => setMedicalConditions(e.target.value)}
-                    placeholder="Any chronic health conditions or ongoing medical notes"
+                    placeholder={t("profile.conditionsPlaceholder")}
                   />
                 </Field>
               </div>
@@ -3817,13 +3821,13 @@ Medical Conditions: ${medicalConditions || 'None listed'}
                 <Globe size={20} />
               </div>
               <div>
-                <h3 className="profile-card__title">Language & Accessibility Settings</h3>
-                <p className="profile-card__subtitle">Default translation target and voice narration controls</p>
+                <h3 className="profile-card__title">{t("profile.langSettings")}</h3>
+                <p className="profile-card__subtitle">{t("profile.langSettingsSub")}</p>
               </div>
             </div>
 
             <div className="profile-form-grid">
-              <Field label="Preferred Translation Language" hint="Used automatically when processing uploaded prescriptions">
+              <Field label={t("dashboard.preferredLang")} hint="Used automatically when processing uploaded prescriptions">
                 <select value={preferredLang} onChange={(e) => setPreferredLang(e.target.value)}>
                   {LANGUAGES.map((l) => (
                     <option key={l.code} value={l.name}>
@@ -3833,7 +3837,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
                 </select>
               </Field>
 
-              <Field label="Voice Audio Speed" hint="Controls playback speed when reading prescription audio summaries">
+              <Field label={t("profile.audioSpeed")} hint={t("profile.audioSpeedHint")}>
                 <select value={narrationSpeed} onChange={(e) => setNarrationSpeed(e.target.value)}>
                   <option value="0.8">0.8x (Slower & Clearer)</option>
                   <option value="1.0">1.0x (Standard Speed)</option>
@@ -3850,24 +3854,24 @@ Medical Conditions: ${medicalConditions || 'None listed'}
                 <ShieldCheck size={20} />
               </div>
               <div>
-                <h3 className="profile-card__title">Emergency Patient ID Pass</h3>
-                <p className="profile-card__subtitle">Instant digital emergency record summary for doctors or first responders</p>
+                <h3 className="profile-card__title">{t("profile.emergencyPass")}</h3>
+                <p className="profile-card__subtitle">{t("profile.emergencyPassSub")}</p>
               </div>
             </div>
 
             <div className="emergency-pass-body">
               <div className="emergency-pass-chip-header">
-                <div className="pass-chip-title">SEHAT SAATHI EMERGENCY MEDICAL ID</div>
+                <div className="pass-chip-title">{t("profile.emergencyPassTitle")}</div>
                 <div className="pass-chip-id">ID: {patient?.id || "N/A"}</div>
               </div>
 
               <div className="emergency-pass-details">
                 <div className="pass-detail-item">
-                  <span className="pass-label">Patient Name</span>
+                  <span className="pass-label">{t("profile.patientName")}</span>
                   <span className="pass-val">{name || "—"}</span>
                 </div>
                 <div className="pass-detail-item">
-                  <span className="pass-label">Age & Gender</span>
+                  <span className="pass-label">{t("profile.ageGender")}</span>
                   <span className="pass-val">{age ? `${age} yrs` : "—"} / {gender || "—"}</span>
                 </div>
                 <div className="pass-detail-item">
@@ -3875,15 +3879,15 @@ Medical Conditions: ${medicalConditions || 'None listed'}
                   <span className="pass-val pass-highlight">{bloodGroup || "Not specified"}</span>
                 </div>
                 <div className="pass-detail-item">
-                  <span className="pass-label">Emergency Contact</span>
+                  <span className="pass-label">{t("profile.emergencyContact")}</span>
                   <span className="pass-val">{emergencyContact || "Not set"}</span>
                 </div>
                 <div className="pass-detail-item full-width">
-                  <span className="pass-label">Known Allergies</span>
+                  <span className="pass-label">{t("profile.knownAllergies")}</span>
                   <span className="pass-val">{allergies || "No allergies listed"}</span>
                 </div>
                 <div className="pass-detail-item full-width">
-                  <span className="pass-label">Medical Conditions</span>
+                  <span className="pass-label">{t("profile.medicalConditions")}</span>
                   <span className="pass-val">{medicalConditions || "No chronic conditions listed"}</span>
                 </div>
               </div>
@@ -3895,14 +3899,14 @@ Medical Conditions: ${medicalConditions || 'None listed'}
                   onClick={handleCopyEmergencyPass}
                 >
                   {copiedPass ? <Check size={14} style={{ color: "var(--teal)" }} /> : <Copy size={14} />}
-                  {copiedPass ? "Copied Pass Summary!" : "Copy Emergency Pass Text"}
+                  {copiedPass ? t("profile.copiedPass") : t("profile.copyPass")}
                 </button>
                 <button
                   type="button"
                   className="btn btn--secondary btn--sm"
                   onClick={() => window.print()}
                 >
-                  <FileText size={14} /> Print / Save Pass PDF
+                  <FileText size={14} /> {t("profile.printPass")}
                 </button>
               </div>
             </div>
@@ -3911,10 +3915,10 @@ Medical Conditions: ${medicalConditions || 'None listed'}
           {/* SAVE ACTION BAR */}
           <div className="profile-actions-bar">
             <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-              Ensure all changes are saved before navigating away.
+              {t("profile.ensureSaved")}
             </span>
             <button type="submit" className="btn btn--primary" disabled={saving}>
-              {saving ? <span className="spinner" /> : "Save Profile Changes"}
+              {saving ? <span className="spinner" /> : t("common.save")}
             </button>
           </div>
         </form>
@@ -3926,8 +3930,8 @@ Medical Conditions: ${medicalConditions || 'None listed'}
               <Trash2 size={20} />
             </div>
             <div>
-              <h3 className="profile-card__title" style={{ color: "var(--brick)" }}>Danger Zone</h3>
-              <p className="profile-card__subtitle">Permanently remove your account and stored medical records</p>
+              <h3 className="profile-card__title" style={{ color: "var(--brick)" }}>{t("profile.dangerZone")}</h3>
+              <p className="profile-card__subtitle">{t("profile.deleteSubtitle")}</p>
             </div>
           </div>
 
@@ -4294,19 +4298,19 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
           className={`emergency-tab-btn ${activeTab === "firstaid" ? "active" : ""}`}
           onClick={() => setActiveTab("firstaid")}
         >
-          <HeartPulse size={16} /> First Aid Guidance
+          <HeartPulse size={16} /> {t("emergency.firstAidTitle")}
         </button>
         <button
           className={`emergency-tab-btn ${activeTab === "helplines" ? "active" : ""}`}
           onClick={() => setActiveTab("helplines")}
         >
-          <PhoneCall size={16} /> Emergency Contacts
+          <PhoneCall size={16} /> {t("emergency.nationalHelplines")}
         </button>
         <button
           className={`emergency-tab-btn ${activeTab === "ambulance" ? "active" : ""}`}
           onClick={() => setActiveTab("ambulance")}
         >
-          <Navigation size={16} /> Ambulance Broadcast
+          <Navigation size={16} /> {t("emergency.govAmbulance")}
         </button>
       </div>
 
@@ -4337,7 +4341,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
           {/* Location Controls & Filters */}
           <div className="facility-filter-bar">
             <div className="filter-group">
-              <span className="filter-label">{t("common.language")}:</span>
+              <span className="filter-label">{t("docDetail.type")}</span>
               <div className="chip-buttons">
                 {["all", "hospital", "pharmacy", "clinic"].map((tType) => (
                   <button
@@ -4352,7 +4356,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
             </div>
 
             <div className="filter-group">
-              <span className="filter-label">Search Radius:</span>
+              <span className="filter-label">{t("emergency.searchRadius")}</span>
               <div className="chip-buttons">
                 {[2, 5, 10, 25].map((r) => (
                   <button
@@ -4369,12 +4373,12 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
             <form onSubmit={handleManualSearch} className="manual-location-form">
               <input
                 type="text"
-                placeholder="Or enter city / area name..."
+                placeholder={t("emergency.searchCityPlaceholder")}
                 value={manualCity}
                 onChange={(e) => setManualCity(e.target.value)}
               />
               <button type="submit" className="btn btn--secondary" style={{ padding: "6px 12px", fontSize: 12 }}>
-                Search
+                {t("assistant.askButton")}
               </button>
             </form>
           </div>
@@ -4393,12 +4397,12 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
           {loadingFacilities ? (
             <div className="loading-box" style={{ padding: 40 }}>
               <div className="pulse-ring" />
-              <p style={{ color: "var(--ink-soft)", margin: 0 }}>Searching nearby healthcare facilities...</p>
+              <p style={{ color: "var(--ink-soft)", margin: 0 }}>{t("emergency.searchingFacilities")}</p>
             </div>
           ) : facilities.length === 0 ? (
             <div className="empty-state">
               <AlertTriangle size={32} color="var(--ink-soft)" />
-              <p>No facilities found in this range. Try increasing the search radius.</p>
+              <p>{t("emergency.noFacilities")}</p>
             </div>
           ) : (
             <div className="facilities-grid">
@@ -4413,7 +4417,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                         </span>
                         {f.emergency_24x7 && (
                           <span className="badge badge--brick" style={{ fontSize: 11 }}>
-                            24/7 Emergency
+                            {t("emergency.open247")}
                           </span>
                         )}
                       </div>
@@ -4454,7 +4458,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
         <div className="section" style={{ marginTop: 20 }}>
           <div className="first-aid-header-row">
             <div>
-              <h2 style={{ margin: 0, fontSize: 18 }}>Step-by-Step First Aid Guidance</h2>
+              <h2 style={{ margin: 0, fontSize: 18 }}>{t("emergency.firstAidTitle")}</h2>
               <p style={{ margin: "4px 0 0", color: "var(--ink-soft)", fontSize: 13 }}>
                 Essential medical response procedures for life-threatening emergencies and injuries
               </p>
@@ -4464,7 +4468,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
               <Search size={15} color="var(--ink-soft)" />
               <input
                 type="text"
-                placeholder="Search first aid guide..."
+                placeholder={t("emergency.searchFirstAid")}
                 value={firstAidQuery}
                 onChange={(e) => setFirstAidQuery(e.target.value)}
               />
@@ -4519,7 +4523,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
 
                   {isExpanded && (
                     <div className="first-aid-card__body fade-in">
-                      <h4 className="guide-subtitle">Step-by-Step Action Plan:</h4>
+                      <h4 className="guide-subtitle">{t("emergency.actionPlan")}</h4>
                       <ol className="guide-steps-list">
                         {guide.steps.map((step, idx) => (
                           <li key={idx}>
@@ -4549,7 +4553,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                       </div>
 
                       <div className="guide-footer-call">
-                        <span>Need immediate ambulance response for this patient?</span>
+                        <span>{t("emergency.needAmbulance")}</span>
                         <a href="tel:108" className="btn btn--emergency-dial btn--sm">
                           <PhoneCall size={13} /> Call 108 Ambulance
                         </a>
@@ -4566,7 +4570,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
       {/* TAB 3: EMERGENCY CONTACTS */}
       {activeTab === "helplines" && (
         <div className="section" style={{ marginTop: 20 }}>
-          <h2>National Emergency Helplines (India)</h2>
+          <h2>{t("emergency.nationalHelplines")}</h2>
           <p style={{ color: "var(--ink-soft)", fontSize: 13, marginBottom: 16 }}>
             Free, toll-free 24/7 national emergency telephone assistance lines
           </p>
@@ -4592,13 +4596,13 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
           <div className="section" style={{ marginTop: 24, background: "rgba(13, 148, 136, 0.05)", borderColor: "var(--teal)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
               <User size={20} color="var(--teal)" />
-              <h3 style={{ margin: 0, fontSize: 16 }}>Your Personal Emergency Contact</h3>
+              <h3 style={{ margin: 0, fontSize: 16 }}>{t("emergency.personalContact")}</h3>
             </div>
             {patientProfile?.emergency_contact ? (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>{patientProfile.emergency_contact}</p>
-                  <p style={{ margin: "2px 0 0", color: "var(--ink-soft)", fontSize: 12 }}>Saved in your Sehat Saathi profile</p>
+                  <p style={{ margin: "2px 0 0", color: "var(--ink-soft)", fontSize: 12 }}>{t("emergency.savedInProfile")}</p>
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
                   <a href={`tel:${patientProfile.emergency_contact}`} className="btn btn--primary">
@@ -4611,7 +4615,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
               </div>
             ) : (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <p style={{ margin: 0, color: "var(--ink-soft)" }}>No personal emergency contact added to profile yet.</p>
+                <p style={{ margin: 0, color: "var(--ink-soft)" }}>{t("emergency.noContactYet")}</p>
                 <button className="btn btn--secondary" onClick={() => onNav("profile")}>
                   + Add in Profile
                 </button>
@@ -4627,7 +4631,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
           <div className="doc-detail-layout-grid">
             {/* Left Column: Instant Location Broadcast */}
             <div className="doc-detail-main">
-              <h2>Instant Location Broadcast to Responders</h2>
+              <h2>{t("emergency.locationBroadcast")}</h2>
               <p style={{ color: "var(--ink-soft)", fontSize: 13, marginBottom: 16 }}>
                 Share your exact GPS coordinates and map directions instantly with family or ambulance drivers.
               </p>
@@ -4655,7 +4659,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                     <HeartPulse size={22} color="#fff" />
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: 16 }}>Direct Government Emergency Ambulance</h3>
+                    <h3 style={{ margin: 0, fontSize: 16 }}>{t("emergency.govAmbulance")}</h3>
                     <p style={{ margin: "2px 0 0", color: "var(--ink-soft)", fontSize: 12 }}>
                       Dial 108 (National Medical Emergency Response Service)
                     </p>
@@ -4672,38 +4676,38 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
               <div className="side-card" style={{ borderColor: "rgba(225, 29, 72, 0.3)" }}>
                 <div className="side-card__header">
                   <Navigation size={18} color="var(--brick)" />
-                  <h3 className="side-card__title">Ambulance Request Form</h3>
+                  <h3 className="side-card__title">{t("emergency.ambulanceForm")}</h3>
                 </div>
 
                 <form onSubmit={handleDispatchSubmit} style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 12 }}>
-                  <Field label="Critical Patient Condition">
+                  <Field label={t("emergency.patientCondition")}>
                     <select
                       value={patientCondition}
                       onChange={(e) => setPatientCondition(e.target.value)}
                       style={{ width: "100%", padding: "8px", borderRadius: 8, border: "1px solid var(--border)" }}
                     >
-                      <option value="Unconscious / Non-Responsive">Unconscious / Non-Responsive</option>
-                      <option value="Breathing Difficulty / Asphyxia">Breathing Difficulty / Asphyxia</option>
-                      <option value="Severe Bleeding & Trauma">Severe Bleeding & Trauma</option>
-                      <option value="Chest Pain / Suspected Heart Attack">Chest Pain / Suspected Heart Attack</option>
-                      <option value="Stroke Symptoms (FAST)">Stroke Symptoms (FAST)</option>
-                      <option value="Burns / Envenomation / Snake Bite">Burns / Envenomation / Snake Bite</option>
+                      <option value="Unconscious / Non-Responsive">{t("emergency.symptomUnconscious")}</option>
+                      <option value="Breathing Difficulty / Asphyxia">{t("emergency.symptomBreathing")}</option>
+                      <option value="Severe Bleeding & Trauma">{t("emergency.symptomBleeding")}</option>
+                      <option value="Chest Pain / Suspected Heart Attack">{t("emergency.symptomChestPain")}</option>
+                      <option value="Stroke Symptoms (FAST)">{t("emergency.symptomStroke")}</option>
+                      <option value="Burns / Envenomation / Snake Bite">{t("emergency.symptomBurns")}</option>
                     </select>
                   </Field>
 
-                  <Field label="Callback Contact Phone">
+                  <Field label={t("emergency.callbackPhone")}>
                     <input
                       type="tel"
-                      placeholder="Your mobile phone number"
+                      placeholder={t("auth.phonePlaceholder")}
                       value={dispatchPhone}
                       onChange={(e) => setDispatchPhone(e.target.value)}
                     />
                   </Field>
 
-                  <Field label="Landmark / Address Notes">
+                  <Field label={t("emergency.addressNotes")}>
                     <input
                       type="text"
-                      placeholder="e.g. Near Bus Stand / Gate 2"
+                      placeholder={t("emergency.landmarkPlaceholder")}
                       value={dispatchLandmark}
                       onChange={(e) => setDispatchLandmark(e.target.value)}
                     />
@@ -4889,7 +4893,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                 <Search size={16} />
                 <input
                   type="text"
-                  placeholder="Search patient by name, phone or ID..."
+                  placeholder={t("worker.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -4912,21 +4916,21 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                 <button
                   className={`view-mode-btn ${viewMode === "grid" ? "active" : ""}`}
                   onClick={() => setViewMode("grid")}
-                  title="Grid Cards View"
+                  title={t("worker.gridCardsView")}
                 >
                   <Grid size={15} style={{ marginRight: 4 }} /> Cards
                 </button>
                 <button
                   className={`view-mode-btn ${viewMode === "table" ? "active" : ""}`}
                   onClick={() => setViewMode("table")}
-                  title="Table List View"
+                  title={t("worker.tableListView")}
                 >
                   <List size={15} style={{ marginRight: 4 }} /> List
                 </button>
               </div>
 
               <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>
-                <Plus size={16} /> Register new patient
+                <Plus size={16} /> {t("worker.registerPatient")}
               </button>
             </div>
           </div>
@@ -4934,12 +4938,12 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
           {loading ? (
             <div className="loading-box">
               <div className="pulse-ring" />
-              <p style={{ color: "var(--ink-soft)", margin: 0 }}>Loading patients directory...</p>
+              <p style={{ color: "var(--ink-soft)", margin: 0 }}>{t("worker.loadingDirectory")}</p>
             </div>
           ) : filteredPatients.length === 0 ? (
             <div className="empty-state">
               <Users size={40} color="var(--ink-faint)" />
-              <h4 style={{ margin: "12px 0 4px", fontSize: 16 }}>No patients found</h4>
+              <h4 style={{ margin: "12px 0 4px", fontSize: 16 }}>{t("worker.noPatientsFound")}</h4>
               <p style={{ color: "var(--ink-soft)", fontSize: 13, margin: 0 }}>
                 {searchQuery ? `No results matching "${searchQuery}". Try a different keyword.` : "Click 'Register new patient' to add your first patient."}
               </p>
@@ -4983,7 +4987,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                         <div className="patient-card__body">
                           <div className="patient-card__row">
                             <User size={14} />
-                            <span className="patient-card__label">Demographics:</span>
+                            <span className="patient-card__label">{t("worker.demographics")}:</span>
                             <span className="patient-card__val">
                               {p.age ? `${p.age} yrs` : "Age unrecorded"} · {p.gender || "Gender unrecorded"}
                             </span>
@@ -4991,13 +4995,13 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
 
                           <div className="patient-card__row">
                             <Phone size={14} />
-                            <span className="patient-card__label">Phone:</span>
+                            <span className="patient-card__label">{t("worker.phone")}:</span>
                             <span className="patient-card__val">{p.phone_number || "Not provided"}</span>
                           </div>
 
                           <div className="patient-card__row">
                             <FileText size={14} />
-                            <span className="patient-card__label">Documents:</span>
+                            <span className="patient-card__label">{t("worker.documents")}:</span>
                             <span className="patient-card__val">
                               {docCount} {docCount === 1 ? "record" : "records"}
                             </span>
@@ -5048,7 +5052,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                   <thead>
                     <tr>
                       <th>{t("role.patient")}</th>
-                      <th>Demographics</th>
+                      <th>{t("worker.demographics")}</th>
                       <th>{t("reminders.phone")}</th>
                       <th>{t("common.language")}</th>
                       <th>{t("nav.documents")}</th>
@@ -5152,12 +5156,12 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
           {loading ? (
             <div className="loading-box">
               <div className="pulse-ring" />
-              <p style={{ color: "var(--ink-soft)", margin: 0 }}>Loading all documents...</p>
+              <p style={{ color: "var(--ink-soft)", margin: 0 }}>{t("worker.loadingDocs")}</p>
             </div>
           ) : allDocs.length === 0 ? (
             <div className="empty-state">
               <FileText size={36} color="var(--ink-faint)" />
-              <p>No documents uploaded yet across all patients.</p>
+              <p>{t("worker.noDocsYet")}</p>
             </div>
           ) : (
             <>
@@ -5188,7 +5192,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                             toast("Download failed: " + err.message, "error");
                           }
                         }}
-                        title="Download file"
+                        title={t("dashboard.downloadOriginal")}
                       >
                         <Download size={14} />
                       </button>
@@ -5213,7 +5217,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                             },
                           });
                         }}
-                        title="Delete file"
+                        title={t("common.delete")}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -5235,7 +5239,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
       {/* TAB 3: PIPELINE STAGES INSPECTOR */}
       {tab === "stages" && (
         <div className="section">
-          <h2>AI Pipeline Stage Debugger</h2>
+          <h2>{t("admin.pipelineDebugger")}</h2>
           <p style={{ color: "var(--ink-soft)", fontSize: 13.5, marginBottom: 16 }}>
             Inspect the intermediate artifacts produced by the OCR and Groq processing stages.
           </p>
@@ -5260,7 +5264,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
 
           <div style={{ background: "var(--panel)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-m)", padding: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13, color: "var(--ink-soft)" }}>
-              <span>Viewing: <strong>{selectedStageFile}</strong></span>
+              <span>{t("admin.viewing")}: <strong>{selectedStageFile}</strong></span>
               <button
                 className="btn btn--secondary"
                 style={{ padding: "4px 8px", fontSize: 11 }}
@@ -5285,7 +5289,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
         <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-              <h2 style={{ margin: 0, fontSize: 18 }}>Register New Patient</h2>
+              <h2 style={{ margin: 0, fontSize: 18 }}>{t("worker.registerPatient")}</h2>
               <button
                 style={{ background: "none", border: "none", cursor: "pointer" }}
                 onClick={() => setShowAddModal(false)}
@@ -5295,10 +5299,10 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
             </div>
 
             <form onSubmit={handleAddPatient}>
-              <Field label="Patient Full Name">
+              <Field label={t("profile.fullName")}>
                 <input
                   type="text"
-                  placeholder="e.g. Maya Devi"
+                  placeholder={t("auth.namePlaceholder")}
                   value={newPatientName}
                   onChange={(e) => setNewPatientName(e.target.value)}
                   required
@@ -5306,24 +5310,24 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
               </Field>
 
               <div className="field-row">
-                <Field label="Age">
+                <Field label={t("profile.age")}>
                   <input
                     type="number"
-                    placeholder="45"
+                    placeholder={t("auth.agePlaceholder")}
                     value={newPatientAge}
                     onChange={(e) => setNewPatientAge(e.target.value)}
                   />
                 </Field>
-                <Field label="Gender">
+                <Field label={t("profile.gender")}>
                   <select value={newPatientGender} onChange={(e) => setNewPatientGender(e.target.value)}>
-                    <option>Female</option>
-                    <option>Male</option>
-                    <option>Other</option>
+                    <option value="Female">{t("auth.genderFemale")}</option>
+                    <option value="Male">{t("auth.genderMale")}</option>
+                    <option value="Other">{t("auth.genderOther")}</option>
                   </select>
                 </Field>
               </div>
 
-              <Field label="Phone number">
+              <Field label={t("profile.phone")}>
                 <input
                   type="tel"
                   placeholder={t("auth.phonePlaceholder")}
@@ -5332,7 +5336,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                 />
               </Field>
 
-              <Field label="Preferred Language">
+              <Field label={t("dashboard.preferredLang")}>
                 <select value={newPatientLang} onChange={(e) => setNewPatientLang(e.target.value)}>
                   {LANGUAGES.map((l) => (
                     <option key={l.code} value={l.name}>
@@ -5348,10 +5352,10 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                   className="btn btn--secondary"
                   onClick={() => setShowAddModal(false)}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button type="submit" className="btn btn--primary" disabled={addingPatient}>
-                  {addingPatient ? <span className="spinner" /> : "Save Patient"}
+                  {addingPatient ? <span className="spinner" /> : t("common.save")}
                 </button>
               </div>
             </form>
@@ -5442,35 +5446,35 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
 
       {editing && (
         <form onSubmit={handleSaveEdit} className="section" style={{ background: "var(--panel)", padding: 20, borderRadius: "var(--radius-m)" }}>
-          <h3>Edit Patient Details</h3>
+          <h3>{t("worker.editPatient")}</h3>
           <div className="field-row">
-            <Field label="Full Name">
+            <Field label={t("profile.fullName")}>
               <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} required />
             </Field>
-            <Field label="Age">
+            <Field label={t("profile.age")}>
               <input type="number" value={editAge} onChange={(e) => setEditAge(e.target.value)} />
             </Field>
           </div>
           <div className="field-row">
-            <Field label="Gender">
+            <Field label={t("profile.gender")}>
               <select value={editGender} onChange={(e) => setEditGender(e.target.value)}>
-                <option>Female</option>
-                <option>Male</option>
-                <option>Other</option>
+                <option value="Female">{t("auth.genderFemale")}</option>
+                <option value="Male">{t("auth.genderMale")}</option>
+                <option value="Other">{t("auth.genderOther")}</option>
               </select>
             </Field>
-            <Field label="Phone">
+            <Field label={t("worker.phone")}>
               <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
             </Field>
           </div>
-          <Field label="Preferred Language">
+          <Field label={t("dashboard.preferredLang")}>
             <select value={editLang} onChange={(e) => setEditLang(e.target.value)}>
               {LANGUAGES.map((l) => (
                 <option key={l.code} value={l.name}>{l.name}</option>
               ))}
             </select>
           </Field>
-          <button type="submit" className="btn btn--primary">Save Changes</button>
+          <button type="submit" className="btn btn--primary">{t("common.save")}</button>
         </form>
       )}
 
@@ -5490,7 +5494,7 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
         ) : documents.length === 0 ? (
           <div className="empty-state">
             <FileText size={36} color="var(--ink-faint)" />
-            <p>No documents uploaded yet for this patient.</p>
+            <p>{t("worker.noDocsForPatient")}</p>
             <button className="btn btn--primary" onClick={() => onUploadFor(patientData)}>
               <UploadCloud size={15} /> Upload a document now
             </button>
@@ -5525,7 +5529,7 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
                           toast("Download failed: " + err.message, "error");
                         }
                       }}
-                      title="Download original file"
+                      title={t("dashboard.downloadOriginal")}
                     >
                       <Download size={14} />
                     </button>
@@ -5550,7 +5554,7 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
                           },
                         });
                       }}
-                      title="Delete document"
+                      title={t("common.delete")}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -5694,7 +5698,7 @@ function AdminOverviewPanel() {
               ))}
             </div>
           ) : (
-            <div className="admin-empty"><p>No translation data yet.</p></div>
+            <div className="admin-empty"><p>{t("admin.noTranslationData")}</p></div>
           )}
         </div>
 
@@ -5704,7 +5708,7 @@ function AdminOverviewPanel() {
             <h3 className="admin-panel__title">
               <Activity size={15} /> Recent Uploads
             </h3>
-            <span className="admin-panel__count">last 10</span>
+            <span className="admin-panel__count">{t("admin.lastTen") || "last 10"}</span>
           </div>
           {recentUploads.length ? (
             <>
@@ -5732,7 +5736,7 @@ function AdminOverviewPanel() {
               />
             </>
           ) : (
-            <div className="admin-empty"><p>No uploads yet.</p></div>
+            <div className="admin-empty"><p>{t("dashboard.noUploads")}</p></div>
           )}
         </div>
       </div>
@@ -5863,7 +5867,7 @@ function AdminUsersPanel() {
                         {u.role === "healthcare_worker" ? (
                           <span className={`admin-badge ${u.is_verified ? "admin-badge--verified" : "admin-badge--unverified"}`}>
                             {u.is_verified ? <BadgeCheck size={11} /> : <Ban size={11} />}
-                            {u.is_verified ? "Verified" : "Unverified"}
+                            {u.is_verified ? t("healthDb.verified") : "Unverified"}
                           </span>
                         ) : (
                           <span style={{ color: "var(--ink-faint)", fontSize: 12 }}>—</span>
@@ -5879,7 +5883,7 @@ function AdminUsersPanel() {
                               className="admin-action-btn admin-action-btn--promote admin-action-btn--sm"
                               onClick={() => handlePromote(u)}
                               disabled={updating === u.id}
-                              title="Promote to Admin"
+                              title={t("admin.promoteToAdmin")}
                             >
                               <ShieldCheck size={12} /> Admin
                             </button>
@@ -5892,14 +5896,14 @@ function AdminUsersPanel() {
                               title={u.is_verified ? "Revoke verification" : "Grant verification"}
                             >
                               {u.is_verified ? <Ban size={12} /> : <BadgeCheck size={12} />}
-                              {u.is_verified ? "Revoke" : "Verify"}
+                              {u.is_verified ? t("admin.revokeVerify") : t("admin.grantVerify")}
                             </button>
                           )}
                           <button
                             className="admin-action-btn admin-action-btn--danger admin-action-btn--sm"
                             onClick={() => handleDelete(u)}
                             disabled={updating === u.id}
-                            title="Delete user"
+                            title={t("admin.deleteUser")}
                           >
                             <Trash2 size={12} />
                           </button>
@@ -5996,7 +6000,7 @@ function AdminPatientsPanel() {
                 <thead>
                   <tr>
                     <th>{t("role.patient")}</th>
-                    <th>Demographics</th>
+                    <th>{t("worker.demographics")}</th>
                     <th>{t("common.language")}</th>
                     <th>{t("reminders.phone")}</th>
                     <th>{t("nav.documents")}</th>
@@ -6034,7 +6038,7 @@ function AdminPatientsPanel() {
                         <button
                           className="admin-action-btn admin-action-btn--danger admin-action-btn--sm"
                           onClick={() => handleDelete(p)}
-                          title="Delete patient"
+                          title={t("admin.deletePatient")}
                         >
                           <Trash2 size={12} />
                         </button>
@@ -6059,6 +6063,7 @@ function AdminPatientsPanel() {
 
 // ---- Documents Panel ----
 function AdminDocumentsPanel() {
+  const { t } = useAppLanguage();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -6110,7 +6115,7 @@ function AdminDocumentsPanel() {
           <div className="admin-search-wrap">
             <Search size={14} />
             <input
-              placeholder="Search by filename or type…"
+              placeholder={t("dashboard.searchPlaceholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -6119,20 +6124,20 @@ function AdminDocumentsPanel() {
       </div>
       <div className="admin-panel__body">
         {loading ? (
-          <div className="admin-loading"><div className="pulse-ring" /><span>Loading documents…</span></div>
+          <div className="admin-loading"><div className="pulse-ring" /><span>{t("common.loading")}</span></div>
         ) : filtered.length === 0 ? (
-          <div className="admin-empty"><FileText size={32} /><p>No documents found.</p></div>
+          <div className="admin-empty"><FileText size={32} /><p>{t("worker.noDocsYet")}</p></div>
         ) : (
           <>
             <div className="admin-table-scroll">
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Filename</th>
-                    <th>Type</th>
-                    <th>Patient ID</th>
-                    <th>Uploaded</th>
-                    <th>Actions</th>
+                    <th>{t("upload.fileName")}</th>
+                    <th>{t("docDetail.type")}</th>
+                    <th>{t("role.patient")} ID</th>
+                    <th>{t("docDetail.uploaded")}</th>
+                    <th>{t("admin.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -6166,14 +6171,14 @@ function AdminDocumentsPanel() {
                                 toast("Download failed: " + err.message, "error");
                               }
                             }}
-                            title="Download file"
+                            title={t("dashboard.downloadOriginal")}
                           >
                             <Download size={12} />
                           </button>
                           <button
                             className="admin-action-btn admin-action-btn--danger admin-action-btn--sm"
                             onClick={() => handleDelete(d)}
-                            title="Delete document"
+                            title={t("common.delete")}
                           >
                             <Trash2 size={12} />
                           </button>
@@ -6433,7 +6438,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
             {loadingPopular ? (
               <div className="loading-box" style={{ padding: 40 }}>
                 <div className="pulse-ring" />
-                <p style={{ color: "var(--ink-soft)", margin: 0 }}>Loading health library topics...</p>
+                <p style={{ color: "var(--ink-soft)", margin: 0 }}>{t("healthDb.loadingTopics")}</p>
               </div>
             ) : (
               <div className="health-db-grid">
@@ -6441,7 +6446,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                   <div key={topic.id || i} className="health-topic-card" onClick={() => handleTopicClick(topic)}>
                     <div className="health-topic-card__header">
                       <h3 className="health-topic-title">{topic.title}</h3>
-                      <span className="badge badge--teal">Verified</span>
+                      <span className="badge badge--teal">{t("healthDb.verified")}</span>
                     </div>
 
                     <p className="health-topic-snippet">
@@ -6457,7 +6462,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                     )}
 
                     <div className="health-topic-card__footer">
-                      <span className="topic-org-label">MedlinePlus / NLM</span>
+                      <span className="topic-org-label">{t("healthDb.medlinePlus") || "MedlinePlus / NLM"}</span>
                       <button type="button" className="btn-link" style={{ background: "none", border: "none", color: "var(--teal)", cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 2 }}>
                         {t("healthDb.readFull")} <ChevronRight size={14} />
                       </button>
@@ -6489,7 +6494,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                         Translated ({getLanguageName(activeTranslatedTopic.language)})
                       </span>
                     ) : (
-                      <span className="badge badge--paper">English Original</span>
+                      <span className="badge badge--paper">{t("healthDb.englishOriginal")}</span>
                     )}
                   </div>
                   <h2 style={{ margin: 0, fontSize: 20, color: "var(--ink)" }}>{displayTopic.title}</h2>
@@ -6559,7 +6564,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
 
                 {displayTopic.snippet && !displayTopic.summary && (
                   <div className="topic-summary-box" style={{ background: "var(--panel)", padding: 18, border: "1px solid var(--border-soft)", borderRadius: "var(--radius-m)", marginBottom: 16 }}>
-                    <h4 style={{ margin: "0 0 10px", fontSize: 14, color: "var(--teal)", fontWeight: 600 }}>Key Highlights</h4>
+                    <h4 style={{ margin: "0 0 10px", fontSize: 14, color: "var(--teal)", fontWeight: 600 }}>{t("healthDb.keyHighlights")}</h4>
                     <p style={{ margin: 0, fontSize: 14, color: "var(--ink)", lineHeight: 1.6 }}>{displayTopic.snippet}</p>
                   </div>
                 )}
@@ -6579,7 +6584,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
               {/* Fixed Footer */}
               <div className="topic-modal-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 14, marginTop: 12, borderTop: "1px solid var(--border-soft)" }}>
                 <div className="topic-org-info" style={{ fontSize: 12, color: "var(--ink-soft)" }}>
-                  <strong>Source Authority:</strong> {displayTopic.organization || "U.S. National Library of Medicine (MedlinePlus)"}
+                  <strong>{t("healthDb.sourceAuthority")}</strong> {displayTopic.organization || "U.S. National Library of Medicine (MedlinePlus)"}
                 </div>
                 {selectedTopic.url && (
                   <a
@@ -6782,8 +6787,8 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
               <UserCheck size={22} />
             </div>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>Caregiver Alerts Active</div>
-              <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>Auto SMS via Twilio on Missed Doses</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{t("reminders.caregiverAlertsActive")}</div>
+              <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{t("reminders.autoSMSDescription")}</div>
             </div>
           </div>
         </div>
@@ -7202,7 +7207,7 @@ export default function App() {
         <div style={{ textAlign: "center" }}>
           <div className="pulse-ring" style={{ margin: "0 auto 16px" }} />
           <BrandMark />
-          <p style={{ color: "var(--ink-soft)", marginTop: 8 }}>Connecting to healthcare services...</p>
+          <p style={{ color: "var(--ink-soft)", marginTop: 8 }}>{translate("common.connecting", appLanguage)}</p>
         </div>
       </div>
     );

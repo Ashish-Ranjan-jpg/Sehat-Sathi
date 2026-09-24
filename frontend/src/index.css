@@ -47,6 +47,8 @@
       .ss-wordmark {
         font-family: 'Source Serif 4', Georgia, serif;
         font-weight: 600;
+        font-size: 20px;
+        white-space: nowrap;
       }
 
       button, input, select, textarea { font-family: inherit; }
@@ -6895,5 +6897,126 @@ img, video, iframe, canvas, svg {
     display: none;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   MOBILE BRANDING & TOPBAR RESPONSIVENESS FIX
+───────────────────────────────────────────────────────────── */
+.mobile-topbar__brand {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0 !important;
+  min-width: max-content !important;
+}
+
+.mobile-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0 !important;
+}
+
+.lang-selector-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--paper-soft, #f7f5ef);
+  border: 1px solid var(--border, #e5e0d3);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--ink);
+  transition: all 0.15s ease;
+}
+
+.lang-selector-wrap:hover {
+  border-color: var(--teal);
+}
+
+.lang-selector--compact {
+  padding: 3px 6px;
+  font-size: 12px;
+  max-width: 95px;
+}
+
+.lang-globe-icon {
+  flex-shrink: 0;
+  color: var(--teal);
+}
+
+.lang-select-dropdown {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: inherit;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  padding-right: 0;
+  appearance: auto;
+}
+
+@media (max-width: 768px) {
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .mobile-topbar .ss-wordmark {
+    font-size: 15.5px !important;
+    white-space: nowrap !important;
+    line-height: 1;
+    letter-spacing: -0.2px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-topbar {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .mobile-topbar .ss-wordmark {
+    font-size: 14.5px !important;
+    letter-spacing: -0.2px;
+  }
+
+  .mobile-topbar__actions {
+    gap: 4px;
+  }
+
+  .lang-selector--compact {
+    padding: 2px 5px;
+    gap: 3px;
+    max-width: 80px;
+  }
+
+  .lang-select-dropdown {
+    font-size: 11.5px;
+  }
+}
+
+@media (max-width: 360px) {
+  .mobile-topbar {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .mobile-topbar .ss-wordmark {
+    font-size: 13.5px !important;
+    letter-spacing: -0.3px;
+  }
+
+  .lang-selector--compact {
+    padding: 2px 4px;
+    max-width: 70px;
+  }
+}
+
 
 
