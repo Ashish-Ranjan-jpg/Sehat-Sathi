@@ -2802,6 +2802,7 @@ function TTSPlayer({ extraction }) {
 // ---------------------------------------------------------------------------
 
 function AIChatBot({ documentId, initialLanguage = "hi" }) {
+  const { t } = useAppLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
