@@ -120,6 +120,7 @@ def _send_twilio_sms(to_phone, body_text):
     if account_sid and auth_token and to_whatsapp:
         try:
             from twilio.rest import Client
+            from twilio.base.exceptions import TwilioRestException
             client = Client(account_sid, auth_token)
             message = client.messages.create(
                 body=body_text,
@@ -128,8 +129,29 @@ def _send_twilio_sms(to_phone, body_text):
             )
             print(f"[TWILIO WHATSAPP SUCCESS] Sent to {to_whatsapp} (SID: {message.sid})")
             return True
+        except TwilioRestException as e:
+            code = e.code
+            if code == 21654:
+                print(
+                    f"[TWILIO WHATSAPP] Recipient {to_whatsapp} has NOT joined the sandbox.\n"
+                    f"  ACTION: Ask them to send 'join <sandbox-keyword>' to WhatsApp +14155238886.\n"
+                    f"  Find your keyword at: https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn"
+                )
+            elif code == 21408:
+                print(
+                    f"[TWILIO WHATSAPP] Geographic permissions not enabled for {to_whatsapp}.\n"
+                    f"  ACTION: Enable the country in Twilio Console → Messaging → Geo-permissions."
+                )
+            elif code == 21211:
+                print(
+                    f"[TWILIO WHATSAPP] Invalid phone number format: {to_whatsapp}.\n"
+                    f"  ACTION: Use full international format, e.g. whatsapp:+919876543210"
+                )
+            else:
+                print(f"[TWILIO WHATSAPP ERROR] Failed to send to {to_whatsapp} (Code {code}): {e.msg}")
+            return False
         except Exception as e:
-            print(f"[TWILIO WHATSAPP ERROR] Failed to send to {to_whatsapp}: {e}")
+            print(f"[TWILIO WHATSAPP ERROR] Unexpected error sending to {to_whatsapp}: {e}")
             return False
     else:
         # Fallback simulation mode
