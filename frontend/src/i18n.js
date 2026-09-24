@@ -19,6 +19,11 @@ export const SUPPORTED_LANGUAGES = [
 
 export const translations = {
   en: {
+    "pwa.installTitle": "Install Sehat Saathi App",
+    "pwa.installSub": "Install on your home screen for instant offline access and medication reminders.",
+    "pwa.installBtn": "Install App",
+    "pwa.offlineBadge": "Offline Mode — Viewing cached medical documents",
+    "pwa.onlineBadge": "Back Online",
     "auth.welcomeBack": "Welcome back. Enter your credentials to sign in.",
     "auth.builtFor": "Built for the person who has to explain the prescription twice.",
     "auth.takesAMinute": "It takes about a minute.",
@@ -266,6 +271,11 @@ export const translations = {
   },
 
   hi: {
+    "pwa.installTitle": "सेहत साथी ऐप इंस्टॉल करें",
+    "pwa.installSub": "ऑफलाइन मेडिकल पहुंच और त्वरित दवा रिमाइंडर के लिए अपनी होम स्क्रीन पर इंस्टॉल करें।",
+    "pwa.installBtn": "ऐप इंस्टॉल करें",
+    "pwa.offlineBadge": "ऑफलाइन मोड — संग्रहीत चिकित्सा दस्तावेज़ देख रहे हैं",
+    "pwa.onlineBadge": "ऑनलाइन वापस आ गए",
     "auth.welcomeBack": "वापसी पर स्वागत है। साइन इन करने के लिए अपने क्रेडेंशियल दर्ज करें।",
     "auth.builtFor": "उस व्यक्ति के लिए बनाया गया जिसे नुस्खे दो बार समझाने पड़ते हैं।",
     "auth.takesAMinute": "इसमें लगभग एक मिनट लगता है।",

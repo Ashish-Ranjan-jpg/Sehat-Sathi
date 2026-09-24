@@ -331,6 +331,72 @@ function PasswordStrengthIndicator({ password }) {
 }
 
 // GlobalModals — renders at app root level
+function PWAInstallBanner() {
+  const { t } = useAppLanguage();
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [dismissed, setDismissed] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    function handleBeforeInstall(e) {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    }
+    function handleOnline() { setIsOffline(false); }
+    function handleOffline() { setIsOffline(true); }
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  async function handleInstall() {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log("[PWA] Installation outcome:", outcome);
+    setDeferredPrompt(null);
+    setDismissed(true);
+  }
+
+  return (
+    <>
+      {isOffline && (
+        <div className="pwa-offline-banner">
+          <AlertCircle size={15} />
+          <span>{t("pwa.offlineBadge")}</span>
+        </div>
+      )}
+
+      {deferredPrompt && !dismissed && (
+        <div className="pwa-install-banner">
+          <div className="pwa-install-banner__icon">
+            <img src="/icons/icon-192x192.png" alt="Sehat Saathi App Icon" width={36} height={36} style={{ borderRadius: 8 }} />
+          </div>
+          <div className="pwa-install-banner__info">
+            <div className="pwa-install-banner__title">{t("pwa.installTitle")}</div>
+            <div className="pwa-install-banner__sub">{t("pwa.installSub")}</div>
+          </div>
+          <div className="pwa-install-banner__actions">
+            <button type="button" className="btn btn--primary btn--sm" onClick={handleInstall}>
+              <Download size={14} /> {t("pwa.installBtn")}
+            </button>
+            <button type="button" className="pwa-dismiss-btn" onClick={() => setDismissed(true)} title={t("common.close")}>
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function GlobalModals() {
   const [toasts, setToasts] = useState([]);
   const [confirm, setConfirm] = useState({ open: false });
@@ -343,6 +409,7 @@ function GlobalModals() {
 
   return (
     <>
+      <PWAInstallBanner />
       <div className="toast-container">
         {toasts.map((t) => (
           <div key={t.id} className={`toast toast--${t.type}`}>

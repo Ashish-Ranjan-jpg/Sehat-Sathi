@@ -1,0 +1,62 @@
+{
+  "name": "Sehat Saathi - AI Healthcare Engine",
+  "short_name": "Sehat Saathi",
+  "description": "Multilingual AI medical document simplification, voice audio playback, and medication reminders.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FBF9F1",
+  "theme_color": "#0F766E",
+  "dir": "ltr",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/apple-touch-icon-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Upload Prescription",
+      "short_name": "Upload",
+      "description": "Upload a doctor prescription or lab report for AI simplification",
+      "url": "/?action=upload",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Medication Reminders",
+      "short_name": "Reminders",
+      "description": "Check active medication schedules and dosage timings",
+      "url": "/?action=reminders",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Emergency Aid",
+      "short_name": "Emergency",
+      "description": "Call 108 emergency and find nearby hospitals",
+      "url": "/?action=emergency",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["medical", "health", "productivity", "utilities"]
+}
