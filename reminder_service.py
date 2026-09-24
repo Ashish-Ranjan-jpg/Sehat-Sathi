@@ -87,36 +87,54 @@ _init_reminder_db()
 
 
 # ---------------------------------------------------------------------------
-# Twilio Notification Engine
+# Twilio WhatsApp Sandbox Notification Engine
 # ---------------------------------------------------------------------------
+
+def _to_whatsapp(phone: str) -> str:
+    """Ensure a phone number has the 'whatsapp:' prefix required by Twilio WhatsApp."""
+    if not phone:
+        return phone
+    phone = phone.strip()
+    if not phone.startswith("whatsapp:"):
+        return f"whatsapp:{phone}"
+    return phone
+
 
 def _send_twilio_sms(to_phone, body_text):
     """
-    Send an SMS or WhatsApp message via Twilio.
+    Send a WhatsApp message via Twilio WhatsApp Sandbox.
     If Twilio credentials are missing in .env, fallback to clean console simulation.
+
+    SETUP: Recipients must first opt-in to the sandbox by sending
+    'join <sandbox-keyword>' to whatsapp:+14155238886 on WhatsApp.
     """
     account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
     auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
-    from_phone = os.environ.get("TWILIO_PHONE_NUMBER") or os.environ.get("TWILIO_WHATSAPP_NUMBER")
+    from_phone = os.environ.get("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
 
-    if account_sid and auth_token and from_phone:
+    # Always use whatsapp: prefix for sender
+    from_phone = _to_whatsapp(from_phone)
+    # Ensure recipient has whatsapp: prefix
+    to_whatsapp = _to_whatsapp(to_phone) if to_phone else None
+
+    if account_sid and auth_token and to_whatsapp:
         try:
             from twilio.rest import Client
             client = Client(account_sid, auth_token)
             message = client.messages.create(
                 body=body_text,
                 from_=from_phone,
-                to=to_phone
+                to=to_whatsapp
             )
-            print(f"[TWILIO SUCCESS] Sent SMS to {to_phone} (SID: {message.sid})")
+            print(f"[TWILIO WHATSAPP SUCCESS] Sent to {to_whatsapp} (SID: {message.sid})")
             return True
         except Exception as e:
-            print(f"[TWILIO ERROR] Failed to send SMS to {to_phone}: {e}")
+            print(f"[TWILIO WHATSAPP ERROR] Failed to send to {to_whatsapp}: {e}")
             return False
     else:
         # Fallback simulation mode
         print("\n" + "=" * 60)
-        print(f"[TWILIO SIMULATION SMS -> {to_phone or 'Patient'}]")
+        print(f"[TWILIO WHATSAPP SIMULATION -> {to_whatsapp or 'Patient'}]")
         print(f"Message: {body_text}")
         print("=" * 60 + "\n")
         return True
@@ -124,25 +142,26 @@ def _send_twilio_sms(to_phone, body_text):
 
 def send_patient_reminder(medicine_name, dosage, time_str, patient_phone=None):
     body = (
-        f"⏰ SEHAT SAATHI REMINDER: It's time to take your medication!\n"
-        f"• Medicine: {medicine_name}\n"
-        f"• Dosage: {dosage or 'As prescribed'}\n"
-        f"• Time: {time_str}\n"
+        f"\u23f0 SEHAT SAATHI REMINDER: It's time to take your medication!\n"
+        f"\u2022 Medicine: {medicine_name}\n"
+        f"\u2022 Dosage: {dosage or 'As prescribed'}\n"
+        f"\u2022 Time: {time_str}\n"
         f"Please log into Sehat Saathi to mark it as taken."
     )
-    return _send_twilio_sms(patient_phone or "+15005550006", body)
+    # Use patient's phone if provided, otherwise skip (simulation)
+    return _send_twilio_sms(patient_phone, body)
 
 
 def send_caregiver_alert(medicine_name, dosage, scheduled_time_str, patient_name, caregiver_name, caregiver_phone):
     body = (
-        f"🚨 SEHAT SAATHI MISSED DOSE ALERT!\n"
+        f"\U0001f6a8 SEHAT SAATHI MISSED DOSE ALERT!\n"
         f"Dear {caregiver_name or 'Caregiver'},\n"
         f"Patient {patient_name or 'Your relative'} has MISSED their scheduled dose:\n"
-        f"• Medicine: {medicine_name} ({dosage or 'As prescribed'})\n"
-        f"• Scheduled Time: {scheduled_time_str}\n"
+        f"\u2022 Medicine: {medicine_name} ({dosage or 'As prescribed'})\n"
+        f"\u2022 Scheduled Time: {scheduled_time_str}\n"
         f"Please check in with them to ensure their health and safety."
     )
-    return _send_twilio_sms(caregiver_phone or "+15005550006", body)
+    return _send_twilio_sms(caregiver_phone, body)
 
 
 # ---------------------------------------------------------------------------
