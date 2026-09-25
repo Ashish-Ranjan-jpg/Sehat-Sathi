@@ -66,6 +66,7 @@ import {
   Bell,
   Clock,
   Calendar,
+  History,
   UserCheck,
   CheckSquare,
   AlarmClock,
@@ -2804,6 +2805,11 @@ function TTSPlayer({ extraction }) {
 function AIChatBot({ documentId, initialLanguage = "hi" }) {
   const { t } = useAppLanguage();
   const [isOpen, setIsOpen] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   const [messages, setMessages] = useState([
     {
       sender: "bot",
@@ -2823,6 +2829,24 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
   const audioChunksRef = useRef([]);
   const chatEndRef = useRef(null);
   const autoSpeakNextRef = useRef(false);
+
+  const fetchSessions = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const list = await api.getChatSessions();
+      setSessions(list || []);
+    } catch (err) {
+      console.error("Failed to load chat history sessions:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchSessions();
+    }
+  }, [isOpen, fetchSessions]);
 
   // Load voices for Web Speech API
   useEffect(() => {
@@ -2849,10 +2873,10 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
   }, [language]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !showHistory) {
       chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, sending, transcribing, isOpen]);
+  }, [messages, sending, transcribing, isOpen, showHistory]);
 
   function speakMessage(text, idx) {
     if (!window.speechSynthesis) {
@@ -2876,7 +2900,6 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
 
     const utter = new SpeechSynthesisUtterance(cleanText);
 
-    // Auto-select best voice matching the current language selection
     const langCode = getLanguageCode(language);
     const bcp = LANG_BCP47[langCode] || "en";
     const available = voices.length > 0 ? voices : window.speechSynthesis.getVoices();
@@ -2920,7 +2943,12 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
     setSending(true);
 
     try {
-      const res = await api.chat(query, documentId, language);
+      const res = await api.chat(query, documentId, language, sessionId);
+      if (res.session_id && res.session_id !== sessionId) {
+        setSessionId(res.session_id);
+        fetchSessions();
+      }
+
       const responseText = res.response || "I couldn't process your question right now.";
       const botMsg = {
         sender: "bot",
@@ -2955,6 +2983,69 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleSelectSession(sessionItem) {
+    try {
+      setSending(true);
+      const res = await api.getChatSessionMessages(sessionItem.id);
+      setSessionId(sessionItem.id);
+      if (res.messages && res.messages.length > 0) {
+        const formatted = res.messages.map((m) => ({
+          id: m.id,
+          sender: m.sender,
+          text: m.text,
+          source: m.source || "ai_generated",
+          medlineplusTopic: m.medlineplus_topic,
+          aiGenerated: m.source !== "medlineplus",
+          time: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        }));
+        setMessages(formatted);
+      }
+      setShowHistory(false);
+    } catch (err) {
+      toast("Failed to load conversation: " + (err.message || "Error"), "error");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function handleNewChat() {
+    setSessionId(null);
+    setMessages([
+      {
+        sender: "bot",
+        text: "Namaste! I am your Sehat Saathi AI Health Assistant. Ask me anything about your medications, dosages, side effects, or general health concerns in English or your preferred regional language.",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      },
+    ]);
+    setShowHistory(false);
+  }
+
+  async function handleDeleteSession(sessionIdToDelete, e) {
+    e.stopPropagation();
+    try {
+      await api.deleteChatSession(sessionIdToDelete);
+      toast("Chat conversation deleted");
+      if (sessionId === sessionIdToDelete) {
+        handleNewChat();
+      }
+      fetchSessions();
+    } catch (err) {
+      toast("Failed to delete conversation: " + (err.message || "Error"), "error");
+    }
+  }
+
+  async function handleClearAllHistory() {
+    if (!window.confirm("Are you sure you want to delete all chat history?")) return;
+    try {
+      await api.clearChatHistory();
+      toast("All chat history cleared");
+      setSessions([]);
+      handleNewChat();
+    } catch (err) {
+      toast("Failed to clear history: " + (err.message || "Error"), "error");
     }
   }
 
@@ -3044,7 +3135,30 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
             </p>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            type="button"
+            className={`chatbot-icon-btn ${showHistory ? "active" : ""}`}
+            onClick={() => {
+              const nextState = !showHistory;
+              setShowHistory(nextState);
+              if (nextState) fetchSessions();
+            }}
+            title="Chat History"
+          >
+            <History size={16} />
+          </button>
+
+          <button
+            type="button"
+            className="chatbot-icon-btn"
+            onClick={handleNewChat}
+            title="Start New Chat"
+          >
+            <Plus size={16} />
+          </button>
+
           <div className="chatbot-lang-select">
             <Globe size={13} color="var(--ink-soft)" />
             <select
@@ -3059,6 +3173,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
               ))}
             </select>
           </div>
+
           <button
             type="button"
             className="chatbot-close-btn"
@@ -3070,126 +3185,185 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
         </div>
       </div>
 
-      <div className="chatbot-messages">
-        {messages.map((m, idx) => (
-          <div key={idx} className={`chat-bubble-wrap ${m.sender === "user" ? "chat-bubble-user" : "chat-bubble-bot"}`}>
-            {m.sender === "bot" && (
-              <div className="chat-avatar">
-                <Bot size={14} />
-              </div>
-            )}
-            <div className="chat-bubble">
-              {m.sender === "bot" && (
-                <div style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                  {m.source === "medlineplus" ? (
-                    <span className="badge badge--teal" style={{ fontSize: 10, padding: "2px 6px" }}>
-                      <ShieldCheck size={10} style={{ marginRight: 3, verticalAlign: "middle" }} /> MedlinePlus Database
-                    </span>
-                  ) : (
-                    <span className="badge badge--paper" style={{ fontSize: 10, padding: "2px 6px", color: "var(--ink-soft)" }}>
-                      <Sparkles size={10} style={{ marginRight: 3, verticalAlign: "middle" }} /> AI Generated Response
-                    </span>
-                  )}
-                  {m.medlineplusTopic?.url && (
-                    <a
-                      href={m.medlineplusTopic.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontSize: 10, color: "var(--teal)", textDecoration: "underline" }}
-                    >
-                      View MedlinePlus topic
-                    </a>
-                  )}
-                </div>
+      {showHistory ? (
+        <div className="chatbot-history-panel">
+          <div className="chatbot-history-header">
+            <span>Previous Chats ({sessions.length})</span>
+            <div className="chatbot-history-actions">
+              <button type="button" className="chatbot-history-btn" onClick={handleNewChat}>
+                <Plus size={13} /> New Chat
+              </button>
+              {sessions.length > 0 && (
+                <button type="button" className="chatbot-history-btn chatbot-history-btn--clear" onClick={handleClearAllHistory}>
+                  <Trash2 size={13} /> Clear All
+                </button>
               )}
-              <div className="chat-text">{m.text}</div>
-              <div className="chat-meta">
-                <span>{m.time}</span>
+            </div>
+          </div>
+
+          <div className="chatbot-history-list">
+            {loadingHistory ? (
+              <div style={{ display: "flex", justifyContent: "center", padding: "40px 0", color: "var(--ink-soft)" }}>
+                <Loader2 size={22} className="spin" />
+              </div>
+            ) : sessions.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink-soft)", fontSize: 13 }}>
+                <MessageSquare size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+                <p style={{ margin: "4px 0", fontWeight: 600 }}>No chat history found</p>
+                <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>Your previous health queries & responses will appear here.</p>
+              </div>
+            ) : (
+              sessions.map((s) => (
+                <div
+                  key={s.id}
+                  className={`chatbot-history-item ${sessionId === s.id ? "active" : ""}`}
+                  onClick={() => handleSelectSession(s)}
+                >
+                  <div className="chatbot-history-item-content">
+                    <div className="chatbot-history-item-title">{s.title || "Chat Conversation"}</div>
+                    <div className="chatbot-history-item-meta">
+                      <span>{s.message_count || 0} messages</span>
+                      <span>•</span>
+                      <span>{new Date(s.updated_at).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="chatbot-history-item-delete"
+                    onClick={(e) => handleDeleteSession(s.id, e)}
+                    title="Delete Chat"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="chatbot-messages">
+            {messages.map((m, idx) => (
+              <div key={idx} className={`chat-bubble-wrap ${m.sender === "user" ? "chat-bubble-user" : "chat-bubble-bot"}`}>
                 {m.sender === "bot" && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <button
-                      type="button"
-                      className={`copy-btn ${speakingMsgIdx === idx ? "copy-btn--speaking" : ""}`}
-                      onClick={() => speakMessage(m.text, idx)}
-                      title={speakingMsgIdx === idx ? "Stop Listening" : "Listen to response"}
-                    >
-                      {speakingMsgIdx === idx ? (
-                        <>
-                          <VolumeX size={13} strokeWidth={2} />
-                          <span>{t("audio.stop")}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Volume2 size={13} strokeWidth={2} />
-                          <span>{t("audio.listen")}</span>
-                        </>
-                      )}
-                    </button>
-                    <CopyButton text={m.text} />
+                  <div className="chat-avatar">
+                    <Bot size={14} />
                   </div>
                 )}
+                <div className="chat-bubble">
+                  {m.sender === "bot" && (
+                    <div style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      {m.source === "medlineplus" ? (
+                        <span className="badge badge--teal" style={{ fontSize: 10, padding: "2px 6px" }}>
+                          <ShieldCheck size={10} style={{ marginRight: 3, verticalAlign: "middle" }} /> MedlinePlus Database
+                        </span>
+                      ) : (
+                        <span className="badge badge--paper" style={{ fontSize: 10, padding: "2px 6px", color: "var(--ink-soft)" }}>
+                          <Sparkles size={10} style={{ marginRight: 3, verticalAlign: "middle" }} /> AI Generated Response
+                        </span>
+                      )}
+                      {m.medlineplusTopic?.url && (
+                        <a
+                          href={m.medlineplusTopic.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: 10, color: "var(--teal)", textDecoration: "underline" }}
+                        >
+                          View MedlinePlus topic
+                        </a>
+                      )}
+                    </div>
+                  )}
+                  <div className="chat-text">{m.text}</div>
+                  <div className="chat-meta">
+                    <span>{m.time}</span>
+                    {m.sender === "bot" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <button
+                          type="button"
+                          className={`copy-btn ${speakingMsgIdx === idx ? "copy-btn--speaking" : ""}`}
+                          onClick={() => speakMessage(m.text, idx)}
+                          title={speakingMsgIdx === idx ? "Stop Listening" : "Listen to response"}
+                        >
+                          {speakingMsgIdx === idx ? (
+                            <>
+                              <VolumeX size={13} strokeWidth={2} />
+                              <span>{t("audio.stop")}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 size={13} strokeWidth={2} />
+                              <span>{t("audio.listen")}</span>
+                            </>
+                          )}
+                        </button>
+                        <CopyButton text={m.text} />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            ))}
+
+            {sending && (
+              <div className="chat-bubble-wrap chat-bubble-bot">
+                <div className="chat-avatar">
+                  <Bot size={14} />
+                </div>
+                <div className="chat-bubble chat-bubble-typing">
+                  <span className="dot" />
+                  <span className="dot" />
+                  <span className="dot" />
+                </div>
+              </div>
+            )}
+
+            {transcribing && (
+              <div className="chat-bubble-wrap chat-bubble-user">
+                <div className="chat-bubble chat-bubble-transcribing">
+                  <Loader2 size={14} className="spin" /> Transcribing speech audio & auto-sending...
+                </div>
+              </div>
+            )}
+
+            <div ref={chatEndRef} />
           </div>
-        ))}
 
-        {sending && (
-          <div className="chat-bubble-wrap chat-bubble-bot">
-            <div className="chat-avatar">
-              <Bot size={14} />
-            </div>
-            <div className="chat-bubble chat-bubble-typing">
-              <span className="dot" />
-              <span className="dot" />
-              <span className="dot" />
-            </div>
-          </div>
-        )}
+          <form
+            className="chatbot-input-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+          >
+            <button
+              type="button"
+              className={`mic-btn ${recording ? "mic-btn--recording" : ""}`}
+              onClick={toggleRecording}
+              disabled={sending || transcribing}
+              title={recording ? "Stop Recording & Auto Send" : "Speak your query (Voice Input)"}
+            >
+              {recording ? <MicOff size={18} /> : <Mic size={18} />}
+            </button>
 
-        {transcribing && (
-          <div className="chat-bubble-wrap chat-bubble-user">
-            <div className="chat-bubble chat-bubble-transcribing">
-              <Loader2 size={14} className="spin" /> Transcribing speech audio & auto-sending...
-            </div>
-          </div>
-        )}
+            <input
+              type="text"
+              placeholder={recording ? "Listening... Speak now!" : "Type or speak your question..."}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={sending || recording || transcribing}
+            />
 
-        <div ref={chatEndRef} />
-      </div>
-
-      <form
-        className="chatbot-input-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSend();
-        }}
-      >
-        <button
-          type="button"
-          className={`mic-btn ${recording ? "mic-btn--recording" : ""}`}
-          onClick={toggleRecording}
-          disabled={sending || transcribing}
-          title={recording ? "Stop Recording & Auto Send" : "Speak your query (Voice Input)"}
-        >
-          {recording ? <MicOff size={18} /> : <Mic size={18} />}
-        </button>
-
-        <input
-          type="text"
-          placeholder={recording ? "Listening... Speak now!" : "Type or speak your question..."}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={sending || recording || transcribing}
-        />
-
-        <button
-          type="submit"
-          className="btn btn--primary send-chat-btn"
-          disabled={!input.trim() || sending || recording || transcribing}
-        >
-          {sending ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
-        </button>
-      </form>
+            <button
+              type="submit"
+              className="btn btn--primary send-chat-btn"
+              disabled={!input.trim() || sending || recording || transcribing}
+            >
+              {sending ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
+            </button>
+          </form>
+        </>
+      )}
     </div>
   );
 

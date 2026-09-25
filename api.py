@@ -18,6 +18,7 @@ import auth
 import storage
 import health_database
 import reminder_service
+import chat_store
 
 # Start medication reminder background daemon
 reminder_service.start_reminder_daemon()
@@ -585,11 +586,12 @@ def admin_list_documents():
 
 
 # ---------------------------------------------------------------------------
-# AI CHAT ENDPOINT
+# AI CHAT ENDPOINTS WITH HISTORY
 # ---------------------------------------------------------------------------
 
 class ChatRequest(BaseModel):
     message: str
+    session_id: Optional[str] = None
     document_id: Optional[str] = None
     language: Optional[str] = None
 
@@ -600,13 +602,23 @@ async def chat_with_ai(
     current_user: dict = Depends(auth.get_current_user),
 ):
     """
-    Context-aware AI medical chatbot endpoint.
-    Searches the MedlinePlus health database first for relevant medical info.
-    If found, uses MedlinePlus content as primary authority context.
-    Also attaches uploaded document context if document_id is provided.
+    Context-aware AI medical chatbot endpoint with history & multi-turn memory.
+    Searches MedlinePlus health database for medical context and attaches document context.
     """
     from groq import Groq
     import os
+
+    user_id = current_user.get("id") or "guest"
+    session_id = req.session_id
+
+    if not session_id:
+        new_session = chat_store.create_session(user_id, req.message)
+        session_id = new_session["id"]
+    else:
+        session = chat_store.get_session(session_id, user_id)
+        if not session:
+            new_session = chat_store.create_session_with_id(session_id, user_id, req.message)
+            session_id = new_session["id"]
 
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
@@ -689,13 +701,20 @@ Your role:
 {context_block}
 {lang_instruction}"""
 
+    # Multi-turn history formatting
+    past_msgs = chat_store.get_session_messages(session_id, user_id)
+    formatted_messages = [{"role": "system", "content": system_prompt}]
+    recent_history = past_msgs[-10:] if len(past_msgs) > 10 else past_msgs
+    for m in recent_history:
+        role = "assistant" if m["sender"] == "bot" else "user"
+        formatted_messages.append({"role": role, "content": m["text"]})
+
+    formatted_messages.append({"role": "user", "content": req.message})
+
     try:
         response = client.chat.completions.create(
             model="openai/gpt-oss-20b",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": req.message},
-            ],
+            messages=formatted_messages,
             temperature=0.7,
             max_tokens=600,
         )
@@ -708,7 +727,29 @@ Your role:
             source_badge = "ai_generated"
             db_topic = None
 
+        # Save user query and bot response to database
+        chat_store.add_message(
+            session_id=session_id,
+            user_id=user_id,
+            sender="user",
+            text=req.message,
+            document_id=req.document_id,
+            language=req.language,
+        )
+
+        chat_store.add_message(
+            session_id=session_id,
+            user_id=user_id,
+            sender="bot",
+            text=reply,
+            source=source_badge,
+            medlineplus_topic=db_topic,
+            document_id=req.document_id,
+            language=req.language,
+        )
+
         return {
+            "session_id": session_id,
             "response": reply,
             "source": source_badge,
             "medlineplus_topic": db_topic,
@@ -716,6 +757,45 @@ Your role:
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI chat error: {str(e)}")
+
+
+@app.get("/api/chat/sessions")
+def get_chat_sessions(current_user: dict = Depends(auth.get_current_user)):
+    """List all chat sessions for the current user."""
+    sessions = chat_store.list_sessions(current_user["id"])
+    return {"sessions": sessions}
+
+
+@app.get("/api/chat/sessions/{session_id}")
+def get_chat_session_messages(
+    session_id: str,
+    current_user: dict = Depends(auth.get_current_user),
+):
+    """Fetch messages for a specific chat session."""
+    session = chat_store.get_session(session_id, current_user["id"])
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+    messages = chat_store.get_session_messages(session_id, current_user["id"])
+    return {"session": session, "messages": messages}
+
+
+@app.delete("/api/chat/sessions/{session_id}")
+def delete_chat_session(
+    session_id: str,
+    current_user: dict = Depends(auth.get_current_user),
+):
+    """Delete a chat session and all its messages."""
+    deleted = chat_store.delete_session(session_id, current_user["id"])
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+    return {"status": "deleted", "session_id": session_id}
+
+
+@app.delete("/api/chat/history")
+def clear_chat_history(current_user: dict = Depends(auth.get_current_user)):
+    """Clear all chat sessions and messages for the current user."""
+    chat_store.clear_user_history(current_user["id"])
+    return {"status": "cleared"}
 
 
 # ---------------------------------------------------------------------------

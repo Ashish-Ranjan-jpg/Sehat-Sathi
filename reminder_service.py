@@ -90,11 +90,29 @@ _init_reminder_db()
 # Twilio WhatsApp Sandbox Notification Engine
 # ---------------------------------------------------------------------------
 
+def _is_valid_e164_phone(phone: str) -> bool:
+    """Check if phone number is a plausible real international phone number."""
+    if not phone:
+        return False
+    digits = ''.join(c for c in phone if c.isdigit())
+    if len(digits) < 10 or len(digits) > 15:
+        return False
+    if digits in ("123456789", "1234567890", "0000000000", "9999999999"):
+        return False
+    return True
+
+
 def _to_whatsapp(phone: str) -> str:
     """Ensure a phone number has the 'whatsapp:' prefix required by Twilio WhatsApp."""
     if not phone:
         return phone
     phone = phone.strip()
+    if not phone.startswith("+") and not phone.startswith("whatsapp:"):
+        if len(phone) == 10 and phone.isdigit():
+            phone = f"+91{phone}"
+        elif len(phone) > 10 and phone.isdigit():
+            phone = f"+{phone}"
+
     if not phone.startswith("whatsapp:"):
         return f"whatsapp:{phone}"
     return phone
@@ -103,7 +121,8 @@ def _to_whatsapp(phone: str) -> str:
 def _send_twilio_sms(to_phone, body_text):
     """
     Send a WhatsApp message via Twilio WhatsApp Sandbox.
-    If Twilio credentials are missing in .env, fallback to clean console simulation.
+    If Twilio credentials are missing in .env or target is a dummy number (e.g. 123456789),
+    fallback to clean console simulation.
 
     SETUP: Recipients must first opt-in to the sandbox by sending
     'join <sandbox-keyword>' to whatsapp:+14155238886 on WhatsApp.
@@ -112,12 +131,12 @@ def _send_twilio_sms(to_phone, body_text):
     auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
     from_phone = os.environ.get("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
 
-    # Always use whatsapp: prefix for sender
-    from_phone = _to_whatsapp(from_phone)
-    # Ensure recipient has whatsapp: prefix
-    to_whatsapp = _to_whatsapp(to_phone) if to_phone else None
+    raw_phone = (to_phone or "").strip()
+    is_valid_number = _is_valid_e164_phone(raw_phone)
 
-    if account_sid and auth_token and to_whatsapp:
+    if account_sid and auth_token and is_valid_number:
+        from_phone = _to_whatsapp(from_phone)
+        to_whatsapp = _to_whatsapp(raw_phone)
         try:
             from twilio.rest import Client
             from twilio.base.exceptions import TwilioRestException
@@ -140,13 +159,10 @@ def _send_twilio_sms(to_phone, body_text):
             elif code == 21408:
                 print(
                     f"[TWILIO WHATSAPP] Geographic permissions not enabled for {to_whatsapp}.\n"
-                    f"  ACTION: Enable the country in Twilio Console → Messaging → Geo-permissions."
+                    f"  ACTION: Enable the country in Twilio Console -> Messaging -> Geo-permissions."
                 )
-            elif code == 21211:
-                print(
-                    f"[TWILIO WHATSAPP] Invalid phone number format: {to_whatsapp}.\n"
-                    f"  ACTION: Use full international format, e.g. whatsapp:+919876543210"
-                )
+            elif code in (21211, 21614, 21606):
+                print(f"[TWILIO WHATSAPP] Invalid or dummy phone number: {to_whatsapp} - falling back to simulation")
             else:
                 print(f"[TWILIO WHATSAPP ERROR] Failed to send to {to_whatsapp} (Code {code}): {e.msg}")
             return False
@@ -156,7 +172,7 @@ def _send_twilio_sms(to_phone, body_text):
     else:
         # Fallback simulation mode
         print("\n" + "=" * 60)
-        print(f"[TWILIO WHATSAPP SIMULATION -> {to_whatsapp or 'Patient'}]")
+        print(f"[TWILIO WHATSAPP SIMULATION -> {_to_whatsapp(raw_phone) if raw_phone else 'Patient'}]")
         print(f"Message: {body_text}")
         print("=" * 60 + "\n")
         return True

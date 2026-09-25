@@ -227,11 +227,32 @@ export const api = {
     },
   },
 
-  // AI Chat
-  async chat(message, documentId = null, language = null) {
+  // AI Chat & History
+  async chat(message, documentId = null, language = null, sessionId = null) {
     return await request("/chat", {
       method: "POST",
-      body: { message, document_id: documentId, language },
+      body: { message, document_id: documentId, language, session_id: sessionId },
+    });
+  },
+
+  async getChatSessions() {
+    const res = await request("/api/chat/sessions");
+    return res.sessions || [];
+  },
+
+  async getChatSessionMessages(sessionId) {
+    return await request(`/api/chat/sessions/${sessionId}`);
+  },
+
+  async deleteChatSession(sessionId) {
+    return await request(`/api/chat/sessions/${sessionId}`, {
+      method: "DELETE",
+    });
+  },
+
+  async clearChatHistory() {
+    return await request("/api/chat/history", {
+      method: "DELETE",
     });
   },
 
