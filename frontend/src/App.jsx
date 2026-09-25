@@ -6547,9 +6547,9 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
           <div className="health-db-results-section">
             <div className="health-db-results-header">
               <h2 style={{ margin: 0, fontSize: 18 }}>
-                Search Results for "{query}"
+                {searchResults.length === 1 ? "Most Relevant Match" : "Top Relevant Matches"} for "{query}"
                 <span className="results-count-badge" style={{ marginLeft: 8, fontSize: 13, fontWeight: 500, color: "var(--ink-soft)" }}>
-                  ({searchResults.length} topics)
+                  ({searchResults.length} {searchResults.length === 1 ? "topic" : "topics"})
                 </span>
               </h2>
               {searchSource && (
@@ -6570,7 +6570,13 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                   <div key={topic.id || i} className="health-topic-card" onClick={() => handleTopicClick(topic)}>
                     <div className="health-topic-card__header">
                       <h3 className="health-topic-title">{topic.title}</h3>
-                      <span className="badge badge--sage">MedlinePlus</span>
+                      {i === 0 ? (
+                        <span className="badge badge--teal" style={{ fontSize: 11, padding: "3px 8px", background: "var(--teal)", color: "#ffffff", fontWeight: 700 }}>
+                          🎯 Most Relevant Match
+                        </span>
+                      ) : (
+                        <span className="badge badge--sage">MedlinePlus</span>
+                      )}
                     </div>
 
                     <p className="health-topic-snippet">

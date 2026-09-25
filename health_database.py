@@ -365,11 +365,23 @@ def _rank_and_filter_topics(topics, query):
     """
     Score, filter, deduplicate, and sort topics by relevance to the query.
     Ensures exact/partial title matches appear first and completely irrelevant items are discarded.
+    If query is empty, deduplicates and returns all topics (for landing page/popular topics).
     """
     if not topics:
         return []
 
     q_clean = (query or '').strip().lower()
+    if not q_clean:
+        # No search query - return deduplicated topics directly (for popular topics landing view)
+        seen_titles = set()
+        deduped = []
+        for t in topics:
+            title_norm = (t.get('title') or '').strip().lower()
+            if title_norm and title_norm not in seen_titles:
+                seen_titles.add(title_norm)
+                deduped.append(t)
+        return deduped
+
     q_words = [w for w in re.split(r'\W+', q_clean) if len(w) > 1]
     if not q_words and q_clean:
         q_words = [q_clean]
@@ -391,24 +403,27 @@ def _rank_and_filter_topics(topics, query):
 
         # Exact title match (highest priority)
         if q_clean and title_norm == q_clean:
-            score += 150
-        # Title starts with full query
+            score += 200
+        # Title starts with full query string
         elif q_clean and title_norm.startswith(q_clean):
-            score += 100
+            score += 120
         # Title contains full query string
         elif q_clean and q_clean in title_norm:
-            score += 70
+            score += 80
 
         # Title word matches
         title_word_matches = sum(1 for w in q_words if w in title_norm)
-        score += title_word_matches * 30
+        score += title_word_matches * 40
 
-        # Text (summary/snippet) word matches
+        # Text (summary/snippet) word matches (lower weight)
         text_word_matches = sum(1 for w in q_words if w in summary or w in snippet)
         score += text_word_matches * 5
 
-        # If zero matching terms anywhere in title, summary, snippet -> drop as irrelevant
-        if q_clean and title_word_matches == 0 and text_word_matches == 0:
+        # Strict Relevance Thresholding:
+        # Require title keyword match or at least 2 text word matches, AND minimum score threshold
+        if title_word_matches == 0 and text_word_matches < 2:
+            continue
+        if score < 35:
             continue
 
         scored.append((score, topic))
@@ -416,6 +431,39 @@ def _rank_and_filter_topics(topics, query):
     # Sort by relevance score descending
     scored.sort(key=lambda x: x[0], reverse=True)
     return [item[1] for item in scored]
+
+
+def _filter_most_relevant(topics, query):
+    """
+    Filters search results to strictly return only the most relevant, highly-accurate match(es).
+    - If an exact title match exists, returns ONLY that 1 single top match.
+    - If a strong title match exists (title starts with query or query is main title phrase), returns top 1-2 matches.
+    - Otherwise returns at most top 1-2 items that meet strict relevance criteria, dropping all unrelated noise.
+    """
+    if not topics:
+        return []
+
+    q_clean = (query or '').strip().lower()
+    top_topic = topics[0]
+    top_title = (top_topic.get('title') or '').strip().lower()
+
+    # 1. Exact title match -> return ONLY the single top match
+    if q_clean and top_title == q_clean:
+        return [top_topic]
+
+    # 2. Title starts with search query or query is exact phrase in title -> return top 1 (or max 2 if both are strong title matches)
+    if q_clean and (top_title.startswith(q_clean) or q_clean in top_title):
+        strong_matches = []
+        for t in topics:
+            t_title = (t.get('title') or '').strip().lower()
+            if t_title == q_clean or t_title.startswith(q_clean) or q_clean in t_title:
+                strong_matches.append(t)
+                if len(strong_matches) >= 2:
+                    break
+        return strong_matches if strong_matches else [top_topic]
+
+    # 3. Otherwise return at most top 1 to 2 items max
+    return topics[:2]
 
 
 # ---------------------------------------------------------------------------
@@ -491,7 +539,8 @@ def _row_to_topic(row):
 
 def search_topics(query, language="en"):
     """
-    Search for health topics fast with relevance ranking and filtering.
+    Search for health topics fast with relevance ranking and strict filtering.
+    Returns only the most relevant matching topic(s) to maximize search accuracy.
     """
     if not query or not query.strip():
         return {"results": [], "count": 0, "source": "none"}
@@ -499,29 +548,33 @@ def search_topics(query, language="en"):
     query = query.strip()
     search_lang = "es" if language == "es" else "en"
 
-    # Step 1: Check cache with relevance ranking
+    # Step 1: Check cache with strict relevance ranking
     cached = _search_cache(query, search_lang)
-    if len(cached) >= 3 or (cached and cached[0].get('title', '').lower() == query.lower()):
-        return {"results": cached[:10], "count": len(cached[:10]), "source": "cache"}
+    if cached:
+        filtered_cached = _filter_most_relevant(cached, query)
+        if filtered_cached:
+            return {"results": filtered_cached, "count": len(filtered_cached), "source": "cache"}
 
     # Step 2: Fetch from MedlinePlus API
-    raw_topics = search_medlineplus(query, language=search_lang, max_results=15)
+    raw_topics = search_medlineplus(query, language=search_lang, max_results=10)
 
     if not raw_topics:
-        return {"results": cached, "count": len(cached), "source": "cache" if cached else "medlineplus"}
+        filtered_cached = _filter_most_relevant(cached, query) if cached else []
+        return {"results": filtered_cached, "count": len(filtered_cached), "source": "cache" if cached else "medlineplus"}
 
     # Step 3: Relevance score and filter raw API results
     ranked_live = _rank_and_filter_topics(raw_topics, query)
 
     results = []
-    for topic in ranked_live[:10]:
+    for topic in ranked_live:
         topic['language'] = search_lang
         topic['source_language'] = 'en'
         topic_id = _cache_topic(topic, search_lang, search_term=query)
         topic['id'] = topic_id
         results.append(topic)
 
-    return {"results": results, "count": len(results), "source": "medlineplus"}
+    filtered = _filter_most_relevant(results, query)
+    return {"results": filtered, "count": len(filtered), "source": "medlineplus"}
 
 
 def get_topic(topic_id):
