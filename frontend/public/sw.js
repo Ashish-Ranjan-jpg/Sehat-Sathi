@@ -54,7 +54,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   // Handle API Requests (Network-First with Cache Fallback)
-  if (url.pathname.startswith("/api/") || url.port === "8000") {
+  if (url.pathname.startsWith("/api/") || url.port === "8000") {
     event.respondWith(
       fetch(request)
         .then((response) => {

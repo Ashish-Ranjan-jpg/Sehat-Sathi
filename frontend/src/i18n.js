@@ -268,6 +268,7 @@ export const translations = {
     "common.error": "Error",
     "common.success": "Success",
     "common.language": "Language",
+    "common.selectLanguage": "Select website language",
     "common.refresh": "Refresh",
     "common.ready": "Ready",
     "common.copyToClipboard": "Copy to clipboard",
@@ -1142,18 +1143,16 @@ export const translations = {
   },
 };
 
-// Fallback lookup function for all supported languages
+// English keeps untranslated interface strings readable instead of mixing
+// Hindi into a different selected language.
 export function t(key, lang = "en") {
-  const currentLang = (lang || "en").toLowerCase();
-  const dict = translations[currentLang] || translations["hi"] || translations["en"];
+  const requested = (lang || "en").toLowerCase().split("-")[0];
+  const currentLang = translations[requested] ? requested : "en";
+  const dict = translations[currentLang] || translations["en"];
   if (dict && dict[key] !== undefined) {
     return dict[key];
   }
-  // Fallback to Hindi dictionary if key missing in target dialect
-  if (translations["hi"] && translations["hi"][key] !== undefined) {
-    return translations["hi"][key];
-  }
-  // Fallback to English dictionary if key missing in target dialect
+  // English is the source language and consistent fallback for missing keys.
   if (translations["en"] && translations["en"][key] !== undefined) {
     return translations["en"][key];
   }

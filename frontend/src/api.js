@@ -307,8 +307,14 @@ export const api = {
 
   // Medication Reminders
   reminders: {
-    async list() {
-      const res = await request("/api/reminders");
+    async list(patientId = null) {
+      const qs = patientId ? `?patient_id=${encodeURIComponent(patientId)}` : "";
+      const res = await request(`/api/reminders${qs}`);
+      return res.reminders || [];
+    },
+
+    async listForPatient(patientId) {
+      const res = await request(`/api/reminders?patient_id=${encodeURIComponent(patientId)}`);
       return res.reminders || [];
     },
 
@@ -325,8 +331,9 @@ export const api = {
       });
     },
 
-    async getLogs() {
-      const res = await request("/api/reminders/logs");
+    async getLogs(patientId = null) {
+      const qs = patientId ? `?patient_id=${encodeURIComponent(patientId)}` : "";
+      const res = await request(`/api/reminders/logs${qs}`);
       return res.logs || [];
     },
 

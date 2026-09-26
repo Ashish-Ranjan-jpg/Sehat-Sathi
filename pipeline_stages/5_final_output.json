@@ -1,16 +1,8 @@
 {
-  "document_type": "prescription",
-  "raw_text": "Date\n\nPatient Name:\n\nAddress:\nDOB:\nAllergies:\nWeight:\n\nRX:\n\nC.0. Jones\n25 El Caro Street\nPleasantville, OH 43320\nMarch 10, 2009\nJoseph McIntyre\n\n12/26/1998\nAKDA\nos kg\n\nAzithremycin 200 mg/sml.\n\nDay is mL\nDay 2: $s mL\n\nDispense § mg/mL solution, 19 mL\n\nRefills: 0\n\nCO Jones, ARNE\n\n",
-  "medications": [
-    {
-      "name": "Azithromycin",
-      "dosage": "200 mg/mL",
-      "frequency": "Varies by day",
-      "duration": "2 days",
-      "instruction": "Day 1: 15 mL, Day 2: 7.5 mL. Dispense 19 mL of the 200 mg/mL solution."
-    }
-  ],
-  "simplified_explanation": "Take the 200 mg/mL azithromycin solution as follows: on day 1, take 15 mL; on day 2, take 7.5 mL; in total you will take 19 mL. Each milliliter contains 200 mg of the medicine. Take it at the same time each day, or as your doctor tells you.",
-  "translated_explanation": "200 mg/mL एज़िथ्रोमाइसिन समाधान को निम्नानुसार लें: दिन 1 पर, 15 mL लें; दिन 2 पर, 7.5 mL लें; कुल मिलाकर आप 19 mL लेंगे। प्रत्येक मिलीलीटर में 200 mg दवा होती है। इसे हर दिन एक ही समय पर लें, या जैसा कि आपका डॉक्टर बताता है।",
-  "language": "hi"
+  "document_type": "medical_report",
+  "raw_text": "VAMSI CH EST & CH}\n\nLDRENS HOSPITAL\n\nSEX: FEMALE\n\nJRAWN + 26/08/2026\n\nREFERRING DOCTOR: T.V.GOPINATH MD\n\nHRI SARATHDIAOSTIOS.\n\nRECEIVED 1 26/08/2026\n\nREPORTED ¢ 26/08/2026\n\n: COMP! AN\nTEST\nRESULT BIOLOGICAL REFERENCE RANGE\nHEAMOGLOBIN\n10.9 12.5 - 18.0\nTOTAL R.B.C.COUNT\n2.91 35-55\nHAEMATOCRIT (PCV) 32.4 35-50\nMCV.MCH.MCHE\nMEAN CORPUSCULAR VOLUME 111.2 80.0 - 97.0\nMEAN CORPUSCULAR HEAMOGLOBIN 37.4 26.0 - 33.0\nMEAN CORPUSCULAR HEAMOGLOBIN CONC 33.7 31.0 - 40.0\n\n4,000-11,000\n\nTOTAL W. 5,900\n\nWBC DIFFERENTIAL COUNT\n\nPOLYMORPH 48 40-70\n—\n\nLYMPHOCYTES 46 15-40\n\n=\nEOSINOPHILS 05 00 ~ 06\nMONOCYTES o1 00 204\n\nPLATELET COUNT 1,564.0\n\nRYTH 25\n\n14 03-15\n\nE.S.R,\n\nR.Srinivasu OMLT\nMedical Lab Technologist\n\nUNITS\na/dt\nmil/ul\n\n%\n\nPo\n\ng/dl\n\ncelis/cumm\n\nte\nad\n\n%e\n\nLaks/ul\n\nmm/h\n\nLab Incharge\n\nee\n",
+  "medications": [],
+  "simplified_explanation": "",
+  "translated_explanation": "",
+  "language": "en"
 }

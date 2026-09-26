@@ -853,6 +853,9 @@ class CreateReminderRequest(BaseModel):
     caregiver_name: Optional[str] = ""
     caregiver_phone: Optional[str] = ""
     document_id: Optional[str] = None
+    # Worker-on-behalf fields
+    patient_id: Optional[str] = None    # patient profile ID (not user ID)
+    patient_name: Optional[str] = None  # human-readable name shown in UI
 
 
 @app.post("/api/reminders")
@@ -860,33 +863,70 @@ def create_medication_reminder(
     req: CreateReminderRequest,
     current_user: dict = Depends(auth.get_current_user)
 ):
-    """Create a new medication reminder schedule."""
+    """Create a new medication reminder schedule.
+    For healthcare workers: supply patient_id and patient_name to create the
+    reminder on behalf of a patient.  The reminder is filed under the patient's
+    user account (looked up via patient_id) so the patient can also see it.
+    """
     if not req.medicine_name or not req.medicine_name.strip():
         raise HTTPException(status_code=400, detail="Medicine name is required.")
     if not req.times:
         raise HTTPException(status_code=400, detail="At least one reminder time is required.")
 
-    user_id = current_user["id"]
+    is_worker = current_user.get("role") == "healthcare_worker"
+
+    # Resolve the user_id the reminder will be filed under
+    if is_worker and req.patient_id:
+        # Look up whether this patient has a login account
+        patient_user = auth_store.get_user_by_patient_id(req.patient_id)
+        target_user_id = patient_user["id"] if patient_user else current_user["id"]
+        created_by_worker_id = current_user["id"]
+        # Resolve patient name
+        patient_name = req.patient_name
+        if not patient_name:
+            pt = document_store.get_patient(req.patient_id)
+            patient_name = pt.get("name", "") if pt else ""
+    else:
+        target_user_id = current_user["id"]
+        created_by_worker_id = None
+        patient_name = None
+
     reminder = reminder_service.create_reminder(
-        user_id=user_id,
+        user_id=target_user_id,
         medicine_name=req.medicine_name.strip(),
         dosage=req.dosage or "",
         times=req.times,
         start_date=req.start_date,
         end_date=req.end_date,
         frequency=req.frequency or "daily",
-        patient_phone=req.patient_phone or current_user.get("phone", ""),
+        patient_phone=req.patient_phone or "",
         caregiver_name=req.caregiver_name or "",
         caregiver_phone=req.caregiver_phone or "",
         document_id=req.document_id,
+        patient_id=req.patient_id or "",
+        patient_name=patient_name or "",
+        created_by_worker_id=created_by_worker_id or "",
     )
     return reminder
 
 
 @app.get("/api/reminders")
-def list_medication_reminders(current_user: dict = Depends(auth.get_current_user)):
-    """List all active medication reminders for current user."""
-    reminders = reminder_service.list_reminders(current_user["id"])
+def list_medication_reminders(
+    patient_id: Optional[str] = None,
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """List medication reminders.
+    - patient role: returns own reminders.
+    - healthcare_worker with ?patient_id=<id>: returns reminders for that patient.
+    - healthcare_worker without patient_id: returns all reminders they created.
+    """
+    role = current_user.get("role", "patient")
+    if role == "healthcare_worker" and patient_id:
+        reminders = reminder_service.list_reminders_for_patient(patient_id)
+    elif role == "healthcare_worker":
+        reminders = reminder_service.list_reminders_created_by_worker(current_user["id"])
+    else:
+        reminders = reminder_service.list_reminders(current_user["id"])
     return {"reminders": reminders}
 
 
@@ -903,9 +943,21 @@ def delete_medication_reminder(
 
 
 @app.get("/api/reminders/logs")
-def get_today_medication_logs(current_user: dict = Depends(auth.get_current_user)):
-    """Get today's dose schedule and status logs."""
-    logs = reminder_service.get_today_logs(current_user["id"])
+def get_today_medication_logs(
+    patient_id: Optional[str] = None,
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Get today's dose schedule.
+    Workers can pass ?patient_id=<id> to view a patient's today logs.
+    """
+    role = current_user.get("role", "patient")
+    if role == "healthcare_worker" and patient_id:
+        # Resolve the patient's user account
+        patient_user = auth_store.get_user_by_patient_id(patient_id)
+        target_uid = patient_user["id"] if patient_user else current_user["id"]
+    else:
+        target_uid = current_user["id"]
+    logs = reminder_service.get_today_logs(target_uid)
     return {"logs": logs}
 
 

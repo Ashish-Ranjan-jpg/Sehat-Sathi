@@ -33,6 +33,9 @@ def _init_reminder_db():
         CREATE TABLE IF NOT EXISTS medication_reminders (
             id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
+            patient_id TEXT,
+            patient_name TEXT,
+            created_by_worker_id TEXT,
             document_id TEXT,
             medicine_name TEXT NOT NULL,
             dosage TEXT,
@@ -84,6 +87,17 @@ def _init_reminder_db():
 
 
 _init_reminder_db()
+
+# Migrate existing table to add new columns if they don't exist yet
+for _col, _default in [
+    ("patient_id", "NULL"),
+    ("patient_name", "NULL"),
+    ("created_by_worker_id", "NULL"),
+]:
+    try:
+        db_engine.execute(f"ALTER TABLE medication_reminders ADD COLUMN {_col} TEXT DEFAULT {_default}")
+    except Exception:
+        pass  # Column already exists
 
 
 # ---------------------------------------------------------------------------
@@ -208,7 +222,8 @@ def send_caregiver_alert(medicine_name, dosage, scheduled_time_str, patient_name
 
 def create_reminder(user_id, medicine_name, dosage, times, start_date=None, end_date=None,
                     frequency="daily", patient_phone=None, caregiver_name=None,
-                    caregiver_phone=None, document_id=None):
+                    caregiver_phone=None, document_id=None,
+                    patient_id=None, patient_name=None, created_by_worker_id=None):
     """Create a new medication reminder schedule."""
     reminder_id = uuid.uuid4().hex[:12]
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -224,14 +239,18 @@ def create_reminder(user_id, medicine_name, dosage, times, start_date=None, end_
     db_engine.execute(
         """
         INSERT INTO medication_reminders
-            (id, user_id, document_id, medicine_name, dosage, frequency, times,
+            (id, user_id, patient_id, patient_name, created_by_worker_id, document_id,
+             medicine_name, dosage, frequency, times,
              start_date, end_date, patient_phone, caregiver_name, caregiver_phone,
              status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
         """,
         (
             reminder_id,
             user_id,
+            patient_id or "",
+            patient_name or "",
+            created_by_worker_id or "",
             document_id,
             medicine_name,
             dosage or "",
@@ -355,10 +374,50 @@ def list_reminders(user_id):
     return rows
 
 
+def list_reminders_for_patient(patient_id):
+    """List all reminders created for a specific patient (by any worker)."""
+    rows = db_engine.fetchall(
+        "SELECT * FROM medication_reminders WHERE patient_id = ? ORDER BY created_at DESC",
+        (patient_id,)
+    )
+    for r in rows:
+        if isinstance(r.get("times"), str):
+            try:
+                r["times"] = json.loads(r["times"])
+            except Exception:
+                r["times"] = []
+    return rows
+
+
+def list_reminders_created_by_worker(worker_user_id):
+    """List all reminders created by a specific healthcare worker across all patients."""
+    rows = db_engine.fetchall(
+        "SELECT * FROM medication_reminders WHERE created_by_worker_id = ? ORDER BY created_at DESC",
+        (worker_user_id,)
+    )
+    for r in rows:
+        if isinstance(r.get("times"), str):
+            try:
+                r["times"] = json.loads(r["times"])
+            except Exception:
+                r["times"] = []
+    return rows
+
+
 def delete_reminder(reminder_id, user_id):
+    """Delete a reminder — allows the patient user OR the creating worker to delete."""
+    # Allow deletion if the user is the patient owner OR the creating worker
+    row = db_engine.fetchone(
+        "SELECT * FROM medication_reminders WHERE id = ?",
+        (reminder_id,)
+    )
+    if not row:
+        return False
+    if row.get("user_id") != user_id and row.get("created_by_worker_id") != user_id:
+        return False
     db_engine.execute(
-        "DELETE FROM medication_reminders WHERE id = ? AND user_id = ?",
-        (reminder_id, user_id)
+        "DELETE FROM medication_reminders WHERE id = ?",
+        (reminder_id,)
     )
     db_engine.execute(
         "DELETE FROM medication_logs WHERE reminder_id = ?",

@@ -1,32 +1,79 @@
-Date
+VAMSI CH EST & CH}
 
-Patient Name:
+LDRENS HOSPITAL
 
-Address:
-DOB:
-Allergies:
-Weight:
+SEX: FEMALE
 
-RX:
+JRAWN + 26/08/2026
 
-C.0. Jones
-25 El Caro Street
-Pleasantville, OH 43320
-March 10, 2009
-Joseph McIntyre
+REFERRING DOCTOR: T.V.GOPINATH MD
 
-12/26/1998
-AKDA
-os kg
+HRI SARATHDIAOSTIOS.
 
-Azithremycin 200 mg/sml.
+RECEIVED 1 26/08/2026
 
-Day is mL
-Day 2: $s mL
+REPORTED ¢ 26/08/2026
 
-Dispense § mg/mL solution, 19 mL
+: COMP! AN
+TEST
+RESULT BIOLOGICAL REFERENCE RANGE
+HEAMOGLOBIN
+10.9 12.5 - 18.0
+TOTAL R.B.C.COUNT
+2.91 35-55
+HAEMATOCRIT (PCV) 32.4 35-50
+MCV.MCH.MCHE
+MEAN CORPUSCULAR VOLUME 111.2 80.0 - 97.0
+MEAN CORPUSCULAR HEAMOGLOBIN 37.4 26.0 - 33.0
+MEAN CORPUSCULAR HEAMOGLOBIN CONC 33.7 31.0 - 40.0
 
-Refills: 0
+4,000-11,000
 
-CO Jones, ARNE
+TOTAL W. 5,900
 
+WBC DIFFERENTIAL COUNT
+
+POLYMORPH 48 40-70
+—
+
+LYMPHOCYTES 46 15-40
+
+=
+EOSINOPHILS 05 00 ~ 06
+MONOCYTES o1 00 204
+
+PLATELET COUNT 1,564.0
+
+RYTH 25
+
+14 03-15
+
+E.S.R,
+
+R.Srinivasu OMLT
+Medical Lab Technologist
+
+UNITS
+a/dt
+mil/ul
+
+%
+
+Po
+
+g/dl
+
+celis/cumm
+
+te
+ad
+
+%e
+
+Laks/ul
+
+mm/h
+
+Lab Incharge
+
+ee

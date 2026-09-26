@@ -98,7 +98,7 @@ function LanguageSelector({ compact = false }) {
         value={language}
         onChange={(e) => setLanguage(e.target.value)}
         className="lang-select-dropdown"
-        title="Select App Language / भाषा चुनें"
+        title={translate("common.selectLanguage", language)}
       >
         {SUPPORTED_LANGUAGES.map((l) => (
           <option key={l.code} value={l.code}>
@@ -259,6 +259,7 @@ function PasswordField({
 }
 
 function PasswordStrengthIndicator({ password }) {
+  const { t } = useAppLanguage();
   const safePassword = password || "";
   const isActive = safePassword.length > 0;
 
@@ -1505,7 +1506,6 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
     { key: "users", label: t("nav.users"), icon: UserCog },
     { key: "patients", label: t("nav.patientDirectory"), icon: Users },
     { key: "documents", label: t("nav.documents"), icon: FileText },
-    { key: "reminders", label: t("nav.reminders"), icon: Bell },
     { key: "healthDatabase", label: t("nav.healthLibrary"), icon: HeartPulse },
     { key: "emergency", label: t("nav.emergency"), icon: ShieldAlert },
   ];
@@ -1642,6 +1642,7 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
 // ---------------------------------------------------------------------------
 
 function Pagination({ currentPage, totalItems, pageSize = 5, onPageChange }) {
+  const { t } = useAppLanguage();
   if (!totalItems || totalItems <= pageSize) return null;
 
   const totalPages = Math.ceil(totalItems / pageSize);
@@ -5754,9 +5755,8 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
 // ADMIN DASHBOARD
 // ---------------------------------------------------------------------------
 
-function AdminDashboard({ user, onLogout }) {
+function AdminDashboard({ user, activePanel = "overview", onPanelChange, onNav, onLogout }) {
   const { t } = useAppLanguage();
-  const [activePanel, setActivePanel] = useState("overview");
 
   const adminName = user?.name || user?.email || t("role.admin");
 
@@ -5769,11 +5769,19 @@ function AdminDashboard({ user, onLogout }) {
 
   const current = panelTitles[activePanel] || panelTitles["overview"];
 
+  const handleNav = (key) => {
+    if (["overview", "users", "patients", "documents"].includes(key)) {
+      if (onPanelChange) onPanelChange(key);
+    } else {
+      if (onNav) onNav(key);
+    }
+  };
+
   return (
     <Shell
       role="admin"
       active={activePanel}
-      onNav={(key) => setActivePanel(key)}
+      onNav={handleNav}
       onLogout={onLogout}
       userName={adminName}
       title={current.title}
@@ -6800,6 +6808,14 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Worker-specific: patient list + currently selected patient
+  const [patients, setPatients] = useState([]);
+  const [patientsLoading, setPatientsLoading] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);  // full patient object
+  const [patientSearch, setPatientSearch] = useState("");
+
+  const isWorker = role === "healthcare_worker";
+
   // Form state
   const [medicineName, setMedicineName] = useState("");
   const [dosage, setDosage] = useState("");
@@ -6814,12 +6830,23 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
   const [endDate, setEndDate] = useState("");
   const [documentId, setDocumentId] = useState("");
 
-  const loadData = useCallback(async () => {
+  // Fetch patient list for workers on mount
+  useEffect(() => {
+    if (!isWorker) return;
+    setPatientsLoading(true);
+    api.getPatients()
+      .then((pts) => setPatients(pts))
+      .catch(() => {})
+      .finally(() => setPatientsLoading(false));
+  }, [isWorker]);
+
+  const loadData = useCallback(async (patId = null) => {
     setLoading(true);
     try {
+      const pid = patId ?? (isWorker ? selectedPatient?.id : null);
       const [rems, lg] = await Promise.all([
-        api.reminders.list(),
-        api.reminders.getLogs(),
+        api.reminders.list(pid || null),
+        api.reminders.getLogs(pid || null),
       ]);
       setReminders(rems);
       setLogs(lg);
@@ -6828,11 +6855,23 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isWorker, selectedPatient]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // When worker selects a different patient, reload
+  const handleSelectPatient = (pt) => {
+    setSelectedPatient(pt);
+    setPatientSearch("");
+    // pre-fill phone from patient profile
+    if (pt) {
+      setPatientPhone(pt.phone_number || "");
+      setCaregiverName(pt.emergency_contact || "");
+    }
+    loadData(pt?.id || null);
+  };
 
   useEffect(() => {
     if (prefilledReminder) {
@@ -6848,6 +6887,10 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
     e.preventDefault();
     if (!medicineName.trim()) {
       toast("Please enter medicine name", "error");
+      return;
+    }
+    if (isWorker && !selectedPatient) {
+      toast("Please select a patient first", "error");
       return;
     }
     const times = [time1];
@@ -6866,8 +6909,15 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
         start_date: startDate,
         end_date: endDate || null,
         document_id: documentId || null,
+        // Worker-on-behalf fields
+        ...(isWorker && selectedPatient ? {
+          patient_id: selectedPatient.id,
+          patient_name: selectedPatient.name,
+        } : {}),
       });
-      toast("Medication reminder created successfully!");
+      toast(isWorker && selectedPatient
+        ? `Reminder created for ${selectedPatient.name}!`
+        : "Medication reminder created successfully!");
       setShowModal(false);
       setMedicineName("");
       setDosage("");
@@ -6920,6 +6970,13 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
   const takenCount = logs.filter((l) => l.status === "taken").length;
   const missedCount = logs.filter((l) => l.status === "missed").length;
 
+  // Filter patient list by search
+  const filteredPatients = patients.filter((p) =>
+    !patientSearch.trim() ||
+    (p.name || "").toLowerCase().includes(patientSearch.toLowerCase()) ||
+    (p.id || "").toLowerCase().includes(patientSearch.toLowerCase())
+  );
+
   return (
     <Shell
       role={role}
@@ -6931,6 +6988,115 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
       subtitle={t("reminders.subtitle")}
     >
       <div className="health-db-container">
+
+        {/* ── WORKER: Patient Selector Panel ── */}
+        {isWorker && (
+          <div style={{
+            background: "var(--panel)",
+            border: "1px solid var(--border-soft)",
+            borderRadius: 14,
+            padding: "18px 20px",
+            marginBottom: 24,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 9,
+                background: "rgba(42,157,143,0.12)", color: "var(--teal)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <Users size={18} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>
+                  Select Patient
+                </div>
+                <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>
+                  Choose a patient to view or add medication reminders on their behalf
+                </div>
+              </div>
+            </div>
+
+            {/* Search input */}
+            <div style={{ position: "relative", marginBottom: 12 }}>
+              <Search size={15} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-soft)" }} />
+              <input
+                type="text"
+                placeholder="Search patients by name or ID…"
+                value={patientSearch}
+                onChange={(e) => setPatientSearch(e.target.value)}
+                style={{
+                  width: "100%", padding: "9px 12px 9px 32px",
+                  borderRadius: 8, border: "1px solid var(--border)",
+                  background: "var(--bg-subtle)", color: "var(--ink)", fontSize: 13,
+                }}
+              />
+            </div>
+
+            {/* Patient chips */}
+            {patientsLoading ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--ink-soft)", fontSize: 13 }}>
+                <Loader2 size={15} className="spin" /> Loading patients…
+              </div>
+            ) : patients.length === 0 ? (
+              <p style={{ color: "var(--ink-soft)", fontSize: 13, margin: 0 }}>
+                No patients found. Register a patient first.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, maxHeight: 160, overflowY: "auto" }}>
+                {/* "All Patients" chip */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectPatient(null)}
+                  style={{
+                    padding: "6px 14px", borderRadius: 20,
+                    border: `1px solid ${!selectedPatient ? "var(--teal)" : "var(--border-soft)"}`,
+                    background: !selectedPatient ? "rgba(42,157,143,0.12)" : "var(--bg-subtle)",
+                    color: !selectedPatient ? "var(--teal)" : "var(--ink-soft)",
+                    fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: 5,
+                  }}
+                >
+                  <Users size={12} /> All Patients
+                </button>
+
+                {filteredPatients.map((pt) => (
+                  <button
+                    key={pt.id}
+                    type="button"
+                    onClick={() => handleSelectPatient(pt)}
+                    style={{
+                      padding: "6px 14px", borderRadius: 20,
+                      border: `1px solid ${selectedPatient?.id === pt.id ? "var(--teal)" : "var(--border-soft)"}`,
+                      background: selectedPatient?.id === pt.id ? "rgba(42,157,143,0.12)" : "var(--bg-subtle)",
+                      color: selectedPatient?.id === pt.id ? "var(--teal)" : "var(--ink)",
+                      fontSize: 12, fontWeight: 600, cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 5,
+                    }}
+                  >
+                    <User size={12} /> {pt.name || pt.id}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {selectedPatient && (
+              <div style={{
+                marginTop: 12, padding: "10px 14px", borderRadius: 9,
+                background: "rgba(42,157,143,0.08)", border: "1px solid rgba(42,157,143,0.25)",
+                fontSize: 13, color: "var(--teal)", display: "flex", alignItems: "center", gap: 8,
+              }}>
+                <UserCheck size={15} />
+                Viewing reminders for <strong>{selectedPatient.name || selectedPatient.id}</strong>
+                {selectedPatient.phone_number && (
+                  <span style={{ color: "var(--ink-soft)", fontWeight: 400 }}>
+                    &nbsp;· 📱 {selectedPatient.phone_number}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Top Summary Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
           <div style={{ background: "var(--panel)", padding: "16px 20px", borderRadius: 12, border: "1px solid var(--border-soft)", display: "flex", alignItems: "center", gap: 14 }}>
@@ -6977,13 +7143,34 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
         {/* Section Header with Add Button */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h2 style={{ fontSize: 20, margin: 0, color: "var(--ink)" }}>{t("reminders.todaySchedule")}</h2>
+            <h2 style={{ fontSize: 20, margin: 0, color: "var(--ink)" }}>
+              {t("reminders.todaySchedule")}
+              {isWorker && selectedPatient && (
+                <span style={{ fontSize: 14, fontWeight: 500, color: "var(--teal)", marginLeft: 10 }}>
+                  — {selectedPatient.name}
+                </span>
+              )}
+            </h2>
             <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: "4px 0 0" }}>
               {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           </div>
-          <button className="btn btn--primary" onClick={() => setShowModal(true)}>
+          <button
+            className="btn btn--primary"
+            onClick={() => {
+              if (isWorker && !selectedPatient) {
+                toast("Please select a patient first to schedule a reminder", "error");
+                return;
+              }
+              setShowModal(true);
+            }}
+          >
             <Plus size={16} /> {t("reminders.scheduleBtn")}
+            {isWorker && selectedPatient && (
+              <span style={{ marginLeft: 6, opacity: 0.85, fontSize: 12 }}>
+                for {selectedPatient.name}
+              </span>
+            )}
           </button>
         </div>
 
@@ -6998,9 +7185,19 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
             <AlarmClock size={36} color="var(--teal)" style={{ marginBottom: 12 }} />
             <h3 style={{ margin: 0, fontSize: 16 }}>{t("reminders.noActive")}</h3>
             <p style={{ color: "var(--ink-soft)", fontSize: 13, maxWidth: 450, margin: "8px auto 16px" }}>
-              {t("reminders.scheduleBtn")}
+              {isWorker
+                ? selectedPatient
+                  ? `No reminders scheduled for ${selectedPatient.name} today.`
+                  : "Select a patient above to view their reminders, or select 'All Patients'."
+                : t("reminders.scheduleBtn")}
             </p>
-            <button className="btn btn--secondary" onClick={() => setShowModal(true)}>
+            <button className="btn btn--secondary" onClick={() => {
+              if (isWorker && !selectedPatient) {
+                toast("Please select a patient first", "error");
+                return;
+              }
+              setShowModal(true);
+            }}>
               <Plus size={15} /> {t("reminders.scheduleBtn")}
             </button>
           </div>
@@ -7120,6 +7317,13 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                       <span className="badge badge--gold" style={{ fontSize: 11 }}>{rem.frequency}</span>
                     </div>
 
+                    {/* Show patient name badge if worker viewing "all" or a reminder has patient info */}
+                    {isWorker && rem.patient_name && (
+                      <div style={{ fontSize: 12, color: "var(--teal)", background: "rgba(42,157,143,0.08)", padding: "4px 10px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
+                        <User size={11} /> {rem.patient_name}
+                      </div>
+                    )}
+
                     <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: "0 0 12px" }}>
                       {t("reminders.dosage")}: <strong>{rem.dosage || t("reminders.scheduled")}</strong>
                     </p>
@@ -7164,6 +7368,18 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                   <X size={20} />
                 </button>
               </div>
+
+              {/* Worker: show selected patient banner */}
+              {isWorker && selectedPatient && (
+                <div style={{
+                  background: "rgba(42,157,143,0.08)", border: "1px solid rgba(42,157,143,0.25)",
+                  borderRadius: 9, padding: "10px 14px", marginBottom: 16,
+                  fontSize: 13, color: "var(--teal)", display: "flex", alignItems: "center", gap: 8,
+                }}>
+                  <User size={15} />
+                  Scheduling reminder for <strong>{selectedPatient.name}</strong>
+                </div>
+              )}
 
               <form onSubmit={handleCreateReminder} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
@@ -7245,7 +7461,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
 
                 <div style={{ background: "var(--bg-subtle)", padding: 14, borderRadius: 10, border: "1px solid var(--border-soft)", marginTop: 4 }}>
                   <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "var(--teal)", display: "flex", alignItems: "center", gap: 6 }}>
-                    <Phone size={14} /> Twilio SMS & Caregiver Notification Setup
+                    <Phone size={14} /> Twilio SMS &amp; Caregiver Notification Setup
                   </h4>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
@@ -7300,6 +7516,9 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
 }
 
 
+
+
+
 // ---------------------------------------------------------------------------
 // ROOT APP COMPONENT
 // ---------------------------------------------------------------------------
@@ -7309,6 +7528,7 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [role, setRole] = useState("patient");
   const [screen, setScreen] = useState("landing");
+  const [adminPanel, setAdminPanel] = useState("overview");
   const [activePatient, setActivePatient] = useState(null);
   const [activeDocId, setActiveDocId] = useState(null);
   const [prefilledReminder, setPrefilledReminder] = useState(null);
@@ -7316,8 +7536,14 @@ export default function App() {
 
   // Global App Language State
   const [appLanguage, setAppLanguageState] = useState(() => {
-    return localStorage.getItem("sehat_saathi_lang") || "hi";
+    const saved = localStorage.getItem("sehat_saathi_lang") || "hi";
+    return SUPPORTED_LANGUAGES.some(({ code }) => code === saved) ? saved : "hi";
   });
+
+  useEffect(() => {
+    document.documentElement.lang = appLanguage;
+    document.documentElement.dir = appLanguage === "ur" ? "rtl" : "ltr";
+  }, [appLanguage]);
 
   function changeAppLanguage(newLang) {
     setAppLanguageState(newLang);
@@ -7359,6 +7585,7 @@ export default function App() {
     setUser(userRecord);
     setProfile(profileRecord);
     setRole(userRecord.role || "patient");
+    setAdminPanel("overview");
     setScreen("dashboard");
   }
 
@@ -7379,6 +7606,14 @@ export default function App() {
     }
     if (role === "patient" && key === "patientDetail") key = "dashboard";
     if (role === "healthcare_worker" && key === "profile") key = "dashboard";
+    if (role === "admin") {
+      if (key === "reminders") key = "dashboard";
+      if (["overview", "users", "patients", "documents", "dashboard"].includes(key)) {
+        setAdminPanel(key === "dashboard" ? "overview" : key);
+        setScreen("dashboard");
+        return;
+      }
+    }
     setScreen(key);
   }
 
@@ -7451,6 +7686,9 @@ export default function App() {
     body = (
       <AdminDashboard
         user={user}
+        activePanel={adminPanel}
+        onPanelChange={setAdminPanel}
+        onNav={goTo}
         onLogout={handleLogout}
       />
     );
