@@ -349,6 +349,9 @@ def translate_topic(topic_dict, target_lang):
     translated['title'] = _translate_text(topic_dict.get('title', ''), target_lang)
     translated['summary'] = _translate_text(topic_dict.get('summary', ''), target_lang)
     translated['snippet'] = _translate_text(topic_dict.get('snippet', ''), target_lang)
+    groups = topic_dict.get('groups') or []
+    translated_groups = _translate_text('\n'.join(groups), target_lang) if groups else ''
+    translated['groups'] = translated_groups.splitlines() if translated_groups else groups
     translated['language'] = target_lang
     translated['source_language'] = 'en'
     return translated
@@ -618,7 +621,9 @@ def get_translated_topic(topic_id, target_lang="en"):
         cached_topic = _row_to_topic(existing)
         is_title_diff = cached_topic.get("title") and cached_topic.get("title") != original.get("title")
         is_summary_diff = cached_topic.get("summary") and cached_topic.get("summary") != original.get("summary")
-        if is_title_diff or is_summary_diff:
+        is_groups_diff = cached_topic.get("groups") != (original.get("groups") or [])
+        groups_complete = not (original.get("groups") or []) or is_groups_diff
+        if (is_title_diff or is_summary_diff) and groups_complete:
             return cached_topic
 
     # Translate on demand (1 topic only!)

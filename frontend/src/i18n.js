@@ -17,6 +17,8 @@ export const SUPPORTED_LANGUAGES = [
   { code: "ur", name: "اردو (Urdu)", flag: "🇮🇳" },
 ];
 
+import { hindiInline } from "./i18n_hardcoded.js";
+
 export const translations = {
   en: {
     "pwa.installTitle": "Install Sehat Saathi App",
@@ -1145,16 +1147,23 @@ export const translations = {
 
 // English keeps untranslated interface strings readable instead of mixing
 // Hindi into a different selected language.
-export function t(key, lang = "en") {
+Object.assign(translations.hi, hindiInline);
+
+const englishKeyByValue = Object.fromEntries(
+  Object.entries(translations.en).map(([key, value]) => [value, key])
+);
+
+export function t(key, lang = globalThis.localStorage?.getItem("sehat_saathi_lang") || "hi") {
   const requested = (lang || "en").toLowerCase().split("-")[0];
   const currentLang = translations[requested] ? requested : "en";
-  const dict = translations[currentLang] || translations["en"];
-  if (dict && dict[key] !== undefined) {
-    return dict[key];
-  }
-  // English is the source language and consistent fallback for missing keys.
-  if (translations["en"] && translations["en"][key] !== undefined) {
-    return translations["en"][key];
-  }
-  return key;
+  const dictionaryKey = translations.en[key] !== undefined ? key : (englishKeyByValue[key] || key);
+  const dict = translations[currentLang] || translations.en;
+  const localizeBrand = (value) => currentLang === "hi" && typeof value === "string"
+    ? value.replaceAll("Sehat Saathi", translations.hi["Sehat Saathi"] || "Sehat Saathi")
+    : value;
+  if (dict[dictionaryKey] !== undefined) return localizeBrand(dict[dictionaryKey]);
+  if (currentLang === "en") return key;
+  if (translations.hi[dictionaryKey] !== undefined) return localizeBrand(translations.hi[dictionaryKey]);
+  if (translations.en[dictionaryKey] !== undefined) return localizeBrand(translations.en[dictionaryKey]);
+  return localizeBrand(key);
 }

@@ -168,7 +168,7 @@ function BrandMark({ light, onClick, size, style }) {
         ...style
       }}
     >
-      Sehat Saathi
+      {translate("Sehat Saathi")}
     </span>
   );
 }
@@ -186,10 +186,10 @@ function CopyButton({ text }) {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      toast("Copied to clipboard!");
+      toast(translate(translate("Copied to clipboard!")));
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      toast("Failed to copy: " + err.message, "error");
+      toast(translate("Failed to copy: ") + err.message, "error");
     }
   }
 
@@ -381,7 +381,7 @@ function PWAInstallBanner() {
       {deferredPrompt && !dismissed && (
         <div className="pwa-install-banner">
           <div className="pwa-install-banner__icon">
-            <img src="/icons/icon-192x192.png" alt="Sehat Saathi App Icon" width={36} height={36} style={{ borderRadius: 8 }} />
+            <img src="/icons/icon-192x192.png" alt={translate("Sehat Saathi App Icon")} width={36} height={36} style={{ borderRadius: 8 }} />
           </div>
           <div className="pwa-install-banner__info">
             <div className="pwa-install-banner__title">{t("pwa.installTitle")}</div>
@@ -434,7 +434,7 @@ function GlobalModals() {
             <p>{confirm.message}</p>
             <div className="confirm-modal__actions">
               <button className="btn btn--secondary" onClick={() => setConfirm({ open: false })}>
-                Cancel
+                {translate("Cancel")}
               </button>
               <button
                 className="btn btn--primary"
@@ -455,13 +455,35 @@ function GlobalModals() {
 }
 
 function StatusDot({ status }) {
+  const { t } = useAppLanguage();
   const isReady = status === "ready" || !status || status === "processed";
   return (
     <span className={`status ${isReady ? "ready" : "processing"}`}>
       <span className="dot" />
-      {isReady ? "Ready" : "Processing"}
+      {isReady ? t("common.ready") : translate("Processing")}
     </span>
   );
+}
+
+function translateDocumentType(value) {
+  if (!value) return "";
+  const source = String(value).trim();
+  const translated = translate(source);
+  if (translated !== source) return translated;
+  const spaced = source.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  const translatedSpaced = translate(spaced.toLowerCase());
+  if (translatedSpaced !== spaced.toLowerCase()) return translatedSpaced;
+  return spaced.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatAppDate(value, options) {
+  const language = globalThis.localStorage?.getItem("sehat_saathi_lang") || "hi";
+  return new Date(value).toLocaleDateString(language, options);
+}
+
+function formatAppTime(value, options) {
+  const language = globalThis.localStorage?.getItem("sehat_saathi_lang") || "hi";
+  return new Date(value).toLocaleTimeString(language, options);
 }
 
 function Field({ label, hint, children }) {
@@ -589,7 +611,7 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
         <div className="landing-hero__image-wrap">
           <img
             src="/images/landing-hero.jpg"
-            alt="Sehat Saathi Medical Preview"
+            alt={translate("Sehat Saathi Medical Preview")}
             className="landing-hero__img"
             onError={(e) => {
               e.target.style.display = "none";
@@ -599,7 +621,7 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
           <div className="landing-hero__fallback" style={{ display: "none" }}>
             <BrandMark light />
             <p style={{ marginTop: 12, fontSize: 14, opacity: 0.9 }}>
-              Upload your custom hero photo to <code>/images/landing-hero.jpg</code>
+              {translate("Upload your custom hero photo to")} <code>{translate("/images/landing-hero.jpg")}</code>
             </p>
           </div>
         </div>
@@ -671,7 +693,7 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
                   <div className="unfold-card__icon" style={{ margin: "0 auto 8px" }}>{f.icon}</div>
                   <strong style={{ fontSize: 14 }}>{f.title}</strong>
                   <span style={{ fontSize: 12, color: "var(--ink-faint)", marginTop: 4 }}>
-                    Slot: <code>{f.imageSrc}</code>
+                    {translate("Slot:")} <code>{f.imageSrc}</code>
                   </span>
                 </div>
               </div>
@@ -701,21 +723,21 @@ function LandingScreen({ onGoLogin, onGoRegister }) {
 
         <div className="workflow-grid">
           <div className="workflow-card">
-            <div className="workflow-card__number">1</div>
+            <div className="workflow-card__number">{translate("1")}</div>
             <h3 className="workflow-card__title">{t("landing.step1Title")}</h3>
             <p className="workflow-card__text">
               {t("landing.step1Text")}
             </p>
           </div>
           <div className="workflow-card">
-            <div className="workflow-card__number">2</div>
+            <div className="workflow-card__number">{translate("2")}</div>
             <h3 className="workflow-card__title">{t("landing.step2Title")}</h3>
             <p className="workflow-card__text">
               {t("landing.step2Text")}
             </p>
           </div>
           <div className="workflow-card">
-            <div className="workflow-card__number">3</div>
+            <div className="workflow-card__number">{translate("3")}</div>
             <h3 className="workflow-card__title">{t("landing.step3Title")}</h3>
             <p className="workflow-card__text">
               {t("landing.step3Text")}
@@ -794,15 +816,14 @@ function LoginScreen({ onLoginSuccess, onGoRegister, onGoLanding }) {
     <div className="auth-screen">
       <div className="auth-panel">
         <div className="auth-panel__hero-img">
-          <img src="/images/auth-hero.jpg" alt="Sehat Saathi hero" className="auth-hero-img" />
+          <img src="/images/auth-hero.jpg" alt={translate("Sehat Saathi hero")} className="auth-hero-img" />
           <div className="auth-panel__hero-overlay" />
         </div>
         <div className="auth-panel__brand"><BrandMark light onClick={onGoLanding} /></div>
         <div className="auth-panel__copy">
           <h2>{t("landing.heroTitle")}</h2>
           <p>
-            Upload a prescription or discharge summary and get it back simplified
-            and translated — so the people relying on it can actually understand it.
+            {translate("Upload a prescription or discharge summary and get it back simplified\n            and translated — so the people relying on it can actually understand it.")}
           </p>
         </div>
       </div>
@@ -865,9 +886,9 @@ function LoginScreen({ onLoginSuccess, onGoRegister, onGoLanding }) {
           </form>
 
           <p className="auth-switch">
-            New here?{" "}
+            {translate("New here?")}{" "}
             <a href="#" onClick={(e) => { e.preventDefault(); onGoRegister(); }} style={{ color: "var(--teal)", fontWeight: 600 }}>
-              Create an account
+              {translate("Create an account")}
             </a>
           </p>
         </div>
@@ -943,16 +964,14 @@ function RegisterScreen({ onRegisterSuccess, onGoLogin, onGoLanding }) {
     <div className="auth-screen">
       <div className="auth-panel">
         <div className="auth-panel__hero-img">
-          <img src="/images/auth-hero.jpg" alt="Sehat Saathi hero" className="auth-hero-img" />
+          <img src="/images/auth-hero.jpg" alt={translate("Sehat Saathi hero")} className="auth-hero-img" />
           <div className="auth-panel__hero-overlay" />
         </div>
         <div className="auth-panel__brand"><BrandMark light onClick={onGoLanding} /></div>
         <div className="auth-panel__copy">
           <h2>{t("auth.builtFor")}</h2>
           <p>
-            Whether you're a patient managing your own care or a health worker
-            supporting several families, your documents and their history stay
-            in one place.
+            {translate("Whether you're a patient managing your own care or a health worker\n            supporting several families, your documents and their history stay\n            in one place.")}
           </p>
         </div>
       </div>
@@ -1198,7 +1217,7 @@ function NotificationBellDrawer({ onNav }) {
         playNotificationChime();
         const latest = list[0];
         if (latest && !latest.is_read) {
-          toast(`${latest.title}: ${latest.message}`);
+          toast(latest.title + translate(": ") + latest.message);
         }
       }
 
@@ -1246,7 +1265,7 @@ function NotificationBellDrawer({ onNav }) {
       setUnreadCount((prev) => Math.max(0, prev - 1));
       prevUnreadRef.current = Math.max(0, prevUnreadRef.current - 1);
     } catch (err) {
-      toast("Failed to mark notification as read", "error");
+      toast(translate(translate("Failed to mark notification as read")), "error");
     }
   }
 
@@ -1256,27 +1275,27 @@ function NotificationBellDrawer({ onNav }) {
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
       setUnreadCount(0);
       prevUnreadRef.current = 0;
-      toast("All notifications marked as read");
+      toast(translate(translate("All notifications marked as read")));
     } catch (err) {
-      toast("Failed to mark all as read", "error");
+      toast(translate(translate("Failed to mark all as read")), "error");
     }
   }
 
   async function handleClearAll() {
     showConfirm({
-      title: "Clear all notifications?",
-      message: "Are you sure you want to delete all in-app notifications?",
+      title: translate(translate("Clear all notifications?")),
+      message: translate(translate("Are you sure you want to delete all in-app notifications?")),
       danger: true,
-      confirmLabel: "Clear All",
+      confirmLabel: translate(translate("Clear All")),
       onConfirm: async () => {
         try {
           await api.notifications.clearAll();
           setNotifications([]);
           setUnreadCount(0);
           prevUnreadRef.current = 0;
-          toast("Cleared all notifications");
+          toast(translate(translate("Cleared all notifications")));
         } catch (err) {
-          toast("Failed to clear notifications", "error");
+          toast(translate(translate("Failed to clear notifications")), "error");
         }
       },
     });
@@ -1293,7 +1312,7 @@ function NotificationBellDrawer({ onNav }) {
         prevUnreadRef.current = Math.max(0, prevUnreadRef.current - 1);
       }
     } catch (err) {
-      toast("Failed to delete notification", "error");
+      toast(translate(translate("Failed to delete notification")), "error");
     }
   }
 
@@ -1327,7 +1346,7 @@ function NotificationBellDrawer({ onNav }) {
               </div>
               {unreadCount > 0 && (
                 <span className="badge badge--teal" style={{ fontSize: 11, padding: "2px 8px" }}>
-                  {unreadCount} new
+                  {unreadCount} {translate("new")}
                 </span>
               )}
             </div>
@@ -1369,13 +1388,13 @@ function NotificationBellDrawer({ onNav }) {
               className={`notif-tab ${filter === "all" ? "active" : ""}`}
               onClick={() => setFilter("all")}
             >
-              {t("notif.all")} ({notifications.length})
+              {t("notif.all")} {translate("(")}{notifications.length}{translate(")")}
             </button>
             <button
               className={`notif-tab ${filter === "unread" ? "active" : ""}`}
               onClick={() => setFilter("unread")}
             >
-              {t("notif.unread")} ({unreadCount})
+              {t("notif.unread")} {translate("(")}{unreadCount}{translate(")")}
             </button>
           </div>
 
@@ -1440,7 +1459,7 @@ function NotificationBellDrawer({ onNav }) {
                               setIsOpen(false);
                             }}
                           >
-                            Go to Reminders <ChevronRight size={12} />
+                            {translate("Go to Reminders")} <ChevronRight size={12} />
                           </button>
                         )}
                         <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
@@ -1451,7 +1470,7 @@ function NotificationBellDrawer({ onNav }) {
                               onClick={(e) => handleMarkRead(item.id, e)}
                               title={t("common.markRead")}
                             >
-                              <Check size={12} /> Mark read
+                              <Check size={12} /> {translate("Mark read")}
                             </button>
                           )}
                           <button
@@ -1533,7 +1552,7 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
           type="button"
           className="hamburger-btn"
           onClick={() => setMobileMenuOpen(true)}
-          aria-label="Open navigation menu"
+          aria-label={translate("Open navigation menu")}
         >
           <Menu size={22} strokeWidth={2.2} />
         </button>
@@ -1567,7 +1586,7 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
             type="button"
             className="sidebar-close-btn"
             onClick={() => setMobileMenuOpen(false)}
-            aria-label="Close navigation menu"
+            aria-label={translate("Close navigation menu")}
           >
             <X size={20} />
           </button>
@@ -1657,7 +1676,7 @@ function Pagination({ currentPage, totalItems, pageSize = 5, onPageChange }) {
   return (
     <div className="pagination-container">
       <div className="pagination-info">
-        Showing <strong>{startItem}–{endItem}</strong> of <strong>{totalItems}</strong> items
+        {translate("Showing")} <strong>{startItem}{translate("–")}{endItem}</strong> {translate("of")} <strong>{totalItems}</strong> {translate("items")}
       </div>
       <div className="pagination-controls">
         <button
@@ -1743,17 +1762,17 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
   function handleDeleteDoc(e, docId) {
     e.stopPropagation();
     showConfirm({
-      title: "Delete this document?",
-      message: "This will permanently remove the uploaded file and all its extracted medical analysis.",
+      title: translate(translate("Delete this document?")),
+      message: translate(translate("This will permanently remove the uploaded file and all its extracted medical analysis.")),
       danger: true,
-      confirmLabel: "Delete Document",
+      confirmLabel: translate(translate("Delete Document")),
       onConfirm: async () => {
         try {
           await api.deleteDocument(docId);
           setDocuments((prev) => prev.filter((d) => d.id !== docId));
-          toast("Document deleted successfully");
+          toast(translate(translate("Document deleted successfully")));
         } catch (err) {
-          toast("Failed to delete document: " + err.message, "error");
+          toast(translate("Failed to delete document: ") + err.message, "error");
         }
       },
     });
@@ -1763,9 +1782,9 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
     e.stopPropagation();
     try {
       await api.downloadDocumentFile(doc.id, doc.original_filename || "document");
-      toast("Download started");
+      toast(translate(translate("Download started")));
     } catch (err) {
-      toast("Download failed: " + err.message, "error");
+      toast(translate("Download failed: ") + err.message, "error");
     }
   }
 
@@ -1812,7 +1831,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
         <div className="dashboard-main-content">
           <div className="section">
             <div className="patient-doc-header">
-              <h2 style={{ margin: 0, fontSize: "1.15rem", lineHeight: 1.2 }}>{t("dashboard.title")} ({documents.length})</h2>
+              <h2 style={{ margin: 0, fontSize: "1.15rem", lineHeight: 1.2 }}>{t("dashboard.title")} {translate("(")}{documents.length}{translate(")")}</h2>
               <div className="patient-doc-actions">
                 {documents.length > 0 && (
                   <div className="search-bar patient-search-bar">
@@ -1858,9 +1877,9 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
                         {getDocTypeIcon(doc.document_type)}
                       </div>
                       <div className="doc-card__body">
-                        <div className="doc-card__type">{doc.document_type || t("nav.documents")}</div>
+                        <div className="doc-card__type">{(translateDocumentType(doc.document_type) || t("nav.documents"))}</div>
                         <div className="doc-card__meta">
-                          {doc.original_filename} · {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "Recently"}
+                          {doc.original_filename} {translate("·")} {doc.uploaded_at ? formatAppDate(doc.uploaded_at, { day: "numeric", month: "short", year: "numeric" }) : translate("Recently")}
                         </div>
                       </div>
                       <div className="doc-card__actions">
@@ -1959,7 +1978,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span>{t("dashboard.lastUpdated")}</span>
                 <strong style={{ color: "var(--ink)" }}>
-                  {documents[0]?.uploaded_at ? new Date(documents[0].uploaded_at).toLocaleDateString() : t("dashboard.noUploads")}
+                  {documents[0]?.uploaded_at ? formatAppDate(documents[0].uploaded_at) : t("dashboard.noUploads")}
                 </strong>
               </div>
             </div>
@@ -1976,19 +1995,19 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
             </p>
             <div className="cheat-sheet-grid">
               <div className="cheat-sheet-item">
-                <span className="cheat-sheet-code">1 - 0 - 1</span>
+                <span className="cheat-sheet-code">{translate("1 - 0 - 1")}</span>
                 <span className="cheat-sheet-desc">{t("dashboard.morningEvening")}</span>
               </div>
               <div className="cheat-sheet-item">
-                <span className="cheat-sheet-code">1 - 1 - 1</span>
+                <span className="cheat-sheet-code">{translate("1 - 1 - 1")}</span>
                 <span className="cheat-sheet-desc">{t("dashboard.thriceDaily")}</span>
               </div>
               <div className="cheat-sheet-item">
-                <span className="cheat-sheet-code">OD / BD</span>
+                <span className="cheat-sheet-code">{translate("OD / BD")}</span>
                 <span className="cheat-sheet-desc">{t("dashboard.onceTwice")}</span>
               </div>
               <div className="cheat-sheet-item">
-                <span className="cheat-sheet-code">AC / PC</span>
+                <span className="cheat-sheet-code">{translate("AC / PC")}</span>
                 <span className="cheat-sheet-desc">{t("dashboard.beforeAfter")}</span>
               </div>
             </div>
@@ -2146,7 +2165,7 @@ function CameraModal({ isOpen, onClose, onCapture }) {
               </button>
             </div>
           ) : capturedImg ? (
-            <img src={capturedImg.previewUrl} alt="Captured prescription" className="camera-preview-img" />
+            <img src={capturedImg.previewUrl} alt={translate("Captured prescription")} className="camera-preview-img" />
           ) : (
             <>
               <video ref={videoRef} autoPlay playsInline muted className="camera-video" />
@@ -2326,14 +2345,14 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
       clearTimeout(stageTimer2);
       clearTimeout(stageTimer3);
 
-      toast("Document processed successfully!");
+      toast(translate(translate("Document processed successfully!")));
       onUploaded(result.document_id);
     } catch (err) {
       clearTimeout(stageTimer1);
       clearTimeout(stageTimer2);
       clearTimeout(stageTimer3);
       setError(err.message || "Document processing failed. Please try again.");
-      toast(err.message || "Document processing failed", "error");
+      toast(err.message || translate("Document processing failed"), "error");
     } finally {
       setLoading(false);
     }
@@ -2365,10 +2384,10 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                   value={selectedPatientId}
                   onChange={(e) => setSelectedPatientId(e.target.value)}
                 >
-                  <option value="">-- Create new patient record --</option>
+                  <option value="">{translate("-- Create new patient record --")}</option>
                   {patients.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name || "Unnamed"} {p.phone_number ? `(${p.phone_number})` : ""} — ID: {p.id.slice(0, 8)}
+                      {p.name || "Unnamed"} {p.phone_number ? `(${p.phone_number})` : ""} {translate("— ID:")} {p.id.slice(0, 8)}
                     </option>
                   ))}
                 </select>
@@ -2427,7 +2446,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
               ) : (
                 <div className="selected-file-card">
                   {previewUrl ? (
-                    <img src={previewUrl} alt="Document preview" />
+                    <img src={previewUrl} alt={translate("Document preview")} />
                   ) : (
                     <div style={{ width: 54, height: 54, background: "var(--paper-deep)", borderRadius: "var(--radius-s)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--teal)" }}>
                       <FileText size={28} />
@@ -2456,7 +2475,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                 <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)}>
                   {LANGUAGES.map((l) => (
                     <option key={l.code} value={l.code}>
-                      {l.name} ({l.code})
+                      {l.name} {translate("(")}{l.code}{translate(")")}
                     </option>
                   ))}
                 </select>
@@ -2478,13 +2497,13 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                         <div className="stepper-dot">
                           {isDone ? <Check size={12} strokeWidth={3} /> : idx + 1}
                         </div>
-                        <span>{step.label}</span>
+                        <span>{translate(step.label)}</span>
                       </div>
                     );
                   })}
                 </div>
                 <span style={{ fontSize: 12.5, color: "var(--ink-soft)", marginTop: 8 }}>
-                  This takes about 10-15 seconds for OCR extraction, Groq medication structuring, simplification, and translation.
+                  {translate("This takes about 10-15 seconds for OCR extraction, Groq medication structuring, simplification, and translation.")}
                 </span>
               </div>
             ) : (
@@ -2504,7 +2523,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                 <h3 className="side-card__title">{t("upload.guideTitle")}</h3>
               </div>
               <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: "0 0 12px 0", lineHeight: 1.5 }}>
-                Follow these tips to get the highest OCR accuracy for doctor prescriptions and lab reports:
+                {translate("Follow these tips to get the highest OCR accuracy for doctor prescriptions and lab reports:")}
               </p>
               <div className="guide-tips-list">
                 <div className="guide-tip-item">
@@ -2524,7 +2543,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                 <div className="guide-tip-item">
                   <ShieldCheck size={16} className="guide-tip-icon" />
                   <div>
-                    <strong style={{ color: "var(--ink)" }}>100% Private & Encrypted</strong>
+                    <strong style={{ color: "var(--ink)" }}>{translate("100% Private & Encrypted")}</strong>
                     <p style={{ margin: "2px 0 0" }}>{t("upload.guidePoint3Text")}</p>
                   </div>
                 </div>
@@ -2532,7 +2551,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                   <Globe size={16} className="guide-tip-icon" />
                   <div>
                     <strong style={{ color: "var(--ink)" }}>{t("upload.instantTranslation")}</strong>
-                    <p style={{ margin: "2px 0 0" }}>Explanations are simplified and translated into 10+ local languages.</p>
+                    <p style={{ margin: "2px 0 0" }}>{translate("Explanations are simplified and translated into 10+ local languages.")}</p>
                   </div>
                 </div>
               </div>
@@ -2545,7 +2564,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
               </div>
               <div className="preview-card__image-box">
                 {previewUrl ? (
-                  <img src={previewUrl} alt="Selected document live preview" />
+                  <img src={previewUrl} alt={translate("Selected document live preview")} />
                 ) : (
                   <div style={{ textAlign: "center", padding: 32, color: "var(--ink-soft)" }}>
                     <FileText size={48} color="var(--teal)" style={{ marginBottom: 8 }} />
@@ -2564,7 +2583,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                   <span>{file.size ? `${(file.size / 1024).toFixed(1)} KB` : "—"}</span>
                 </div>
                 <div className="preview-card__meta-row">
-                  <span>{t("profile.targetLang")}:</span>
+                  <span>{t("profile.targetLang")}{translate(":")}</span>
                   <span className="badge badge--teal">{getLanguageName(targetLang)}</span>
                 </div>
                 <button
@@ -2573,7 +2592,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                   onClick={handleClearFile}
                   style={{ width: "100%", marginTop: 8, fontSize: 13 }}
                 >
-                  Clear / Select different file
+                  {translate("Clear / Select different file")}
                 </button>
               </div>
             </div>
@@ -2753,7 +2772,7 @@ function TTSPlayer({ extraction }) {
 
           {isPlaying ? (
             <button className="tts-btn tts-btn--main" onClick={handlePause} title={t("audio.pause")}>
-              <Pause size={16} fill="currentColor" /> Pause
+              <Pause size={16} fill="currentColor" /> {translate("Pause")}
             </button>
           ) : (
             <button className="tts-btn tts-btn--main tts-btn--play" onClick={handlePlay} title={isPaused ? "Resume" : "Play"}>
@@ -2777,14 +2796,14 @@ function TTSPlayer({ extraction }) {
             {voices.length === 0 && <option value="">{t("common.loading")}</option>}
             {voices.map((v) => (
               <option key={v.voiceURI} value={v.voiceURI}>
-                {v.name} ({v.lang})
+                {v.name} {translate("(")}{v.lang}{translate(")")}
               </option>
             ))}
           </select>
         </div>
 
         <div className="tts-setting">
-          <label htmlFor="tts-rate">Speed: {rate}×</label>
+          <label htmlFor="tts-rate">{translate("Speed:")} {rate}{translate("×")}</label>
           <input
             id="tts-rate"
             type="range"
@@ -2824,8 +2843,8 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
   const [messages, setMessages] = useState([
     {
       sender: "bot",
-      text: "Namaste! I am your Sehat Saathi AI Health Assistant. Ask me anything about your medications, dosages, side effects, or general health concerns in English or your preferred regional language.",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      text: translate("Namaste! I am your Sehat Saathi AI Health Assistant. Ask me anything about your medications, dosages, side effects, or general health concerns in English or your preferred regional language."),
+      time: formatAppTime(Date.now(), { hour: "2-digit", minute: "2-digit" }),
     },
   ]);
   const [input, setInput] = useState("");
@@ -2891,7 +2910,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
 
   function speakMessage(text, idx) {
     if (!window.speechSynthesis) {
-      toast("Text-to-speech is not supported in this browser", "error");
+      toast(translate(translate("Text-to-speech is not supported in this browser")), "error");
       return;
     }
 
@@ -2946,7 +2965,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
     const userMsg = {
       sender: "user",
       text: query,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      time: formatAppTime(Date.now(), { hour: "2-digit", minute: "2-digit" }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -2967,7 +2986,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
         source: res.source || "ai_generated",
         medlineplusTopic: res.medlineplus_topic || null,
         aiGenerated: res.ai_generated ?? true,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        time: formatAppTime(Date.now(), { hour: "2-digit", minute: "2-digit" }),
       };
 
       setMessages((prev) => {
@@ -2983,13 +3002,13 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
         return updated;
       });
     } catch (err) {
-      toast("Chat error: " + (err.message || "Failed to fetch response"), "error");
+      toast(translate("Chat error: ") + (err.message || translate("Failed to fetch response")), "error");
       const errorMsg = {
         sender: "bot",
-        text: "Sorry, I encountered an error answering your query. Please try again.",
+        text: translate("Sorry, I encountered an error answering your query. Please try again."),
         source: "ai_generated",
         aiGenerated: true,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        time: formatAppTime(Date.now(), { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
@@ -3010,13 +3029,13 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
           source: m.source || "ai_generated",
           medlineplusTopic: m.medlineplus_topic,
           aiGenerated: m.source !== "medlineplus",
-          time: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          time: formatAppTime(m.created_at, { hour: "2-digit", minute: "2-digit" }),
         }));
         setMessages(formatted);
       }
       setShowHistory(false);
     } catch (err) {
-      toast("Failed to load conversation: " + (err.message || "Error"), "error");
+      toast(translate("Failed to load conversation: ") + (err.message || translate("Error")), "error");
     } finally {
       setSending(false);
     }
@@ -3027,8 +3046,8 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
     setMessages([
       {
         sender: "bot",
-        text: "Namaste! I am your Sehat Saathi AI Health Assistant. Ask me anything about your medications, dosages, side effects, or general health concerns in English or your preferred regional language.",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        text: translate("Namaste! I am your Sehat Saathi AI Health Assistant. Ask me anything about your medications, dosages, side effects, or general health concerns in English or your preferred regional language."),
+        time: formatAppTime(Date.now(), { hour: "2-digit", minute: "2-digit" }),
       },
     ]);
     setShowHistory(false);
@@ -3038,13 +3057,13 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
     e.stopPropagation();
     try {
       await api.deleteChatSession(sessionIdToDelete);
-      toast("Chat conversation deleted");
+      toast(translate(translate("Chat conversation deleted")));
       if (sessionId === sessionIdToDelete) {
         handleNewChat();
       }
       fetchSessions();
     } catch (err) {
-      toast("Failed to delete conversation: " + (err.message || "Error"), "error");
+      toast(translate("Failed to delete conversation: ") + (err.message || translate("Error")), "error");
     }
   }
 
@@ -3052,11 +3071,11 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
     if (!window.confirm("Are you sure you want to delete all chat history?")) return;
     try {
       await api.clearChatHistory();
-      toast("All chat history cleared");
+      toast(translate(translate("All chat history cleared")));
       setSessions([]);
       handleNewChat();
     } catch (err) {
-      toast("Failed to clear history: " + (err.message || "Error"), "error");
+      toast(translate("Failed to clear history: ") + (err.message || translate("Error")), "error");
     }
   }
 
@@ -3077,26 +3096,30 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
         const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || "audio/webm" });
         stream.getTracks().forEach((track) => track.stop());
         setTranscribing(true);
+        let transcribedText = null;
         try {
           const res = await api.speechToText(audioBlob, language);
-          if (res.text) {
-            toast("Speech transcribed! Auto-sending query...");
-            await handleSend(res.text, true);
-          } else {
-            toast("Could not recognize speech", "error");
+          transcribedText = res.text;
+          if (!transcribedText) {
+            toast(translate("Could not recognize speech"), "error");
           }
         } catch (err) {
-          toast("Speech-to-text error: " + err.message, "error");
+          toast(translate("Speech-to-text error: ") + err.message, "error");
         } finally {
           setTranscribing(false);
+        }
+
+        if (transcribedText) {
+          toast(translate("Speech transcribed! Auto-sending query..."));
+          await handleSend(transcribedText, true);
         }
       };
 
       mediaRecorder.start();
       setRecording(true);
-      toast("Recording started... Speak now");
+      toast(translate(translate("Recording started... Speak now")));
     } catch (err) {
-      toast("Microphone access error: " + err.message, "error");
+      toast(translate("Microphone access error: ") + err.message, "error");
     }
   }
 
@@ -3142,7 +3165,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
           <div>
             <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{t("assistant.titleShort")}</h3>
             <p style={{ margin: 0, fontSize: 11, color: "var(--ink-soft)" }}>
-              AI Health Assistant
+              {translate("AI Health Assistant")}
             </p>
           </div>
         </div>
@@ -3156,7 +3179,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
               setShowHistory(nextState);
               if (nextState) fetchSessions();
             }}
-            title="Chat History"
+            title={translate("Chat History")}
           >
             <History size={16} />
           </button>
@@ -3165,7 +3188,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
             type="button"
             className="chatbot-icon-btn"
             onClick={handleNewChat}
-            title="Start New Chat"
+            title={translate("Start New Chat")}
           >
             <Plus size={16} />
           </button>
@@ -3199,14 +3222,14 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
       {showHistory ? (
         <div className="chatbot-history-panel">
           <div className="chatbot-history-header">
-            <span>Previous Chats ({sessions.length})</span>
+            <span>{translate("Previous Chats (")}{sessions.length}{translate(")")}</span>
             <div className="chatbot-history-actions">
               <button type="button" className="chatbot-history-btn" onClick={handleNewChat}>
-                <Plus size={13} /> New Chat
+                <Plus size={13} /> {translate("New Chat")}
               </button>
               {sessions.length > 0 && (
                 <button type="button" className="chatbot-history-btn chatbot-history-btn--clear" onClick={handleClearAllHistory}>
-                  <Trash2 size={13} /> Clear All
+                  <Trash2 size={13} /> {translate("Clear All")}
                 </button>
               )}
             </div>
@@ -3220,8 +3243,8 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
             ) : sessions.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink-soft)", fontSize: 13 }}>
                 <MessageSquare size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
-                <p style={{ margin: "4px 0", fontWeight: 600 }}>No chat history found</p>
-                <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>Your previous health queries & responses will appear here.</p>
+                <p style={{ margin: "4px 0", fontWeight: 600 }}>{translate("No chat history found")}</p>
+                <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>{translate("Your previous health queries & responses will appear here.")}</p>
               </div>
             ) : (
               sessions.map((s) => (
@@ -3233,16 +3256,16 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
                   <div className="chatbot-history-item-content">
                     <div className="chatbot-history-item-title">{s.title || "Chat Conversation"}</div>
                     <div className="chatbot-history-item-meta">
-                      <span>{s.message_count || 0} messages</span>
-                      <span>•</span>
-                      <span>{new Date(s.updated_at).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
+                      <span>{s.message_count || 0} {translate("messages")}</span>
+                      <span>{translate("•")}</span>
+                      <span>{formatAppDate(s.updated_at, { month: "short", day: "numeric" })}</span>
                     </div>
                   </div>
                   <button
                     type="button"
                     className="chatbot-history-item-delete"
                     onClick={(e) => handleDeleteSession(s.id, e)}
-                    title="Delete Chat"
+                    title={translate("Delete Chat")}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -3266,11 +3289,11 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
                     <div style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                       {m.source === "medlineplus" ? (
                         <span className="badge badge--teal" style={{ fontSize: 10, padding: "2px 6px" }}>
-                          <ShieldCheck size={10} style={{ marginRight: 3, verticalAlign: "middle" }} /> MedlinePlus Database
+                          <ShieldCheck size={10} style={{ marginRight: 3, verticalAlign: "middle" }} /> {translate("MedlinePlus Database")}
                         </span>
                       ) : (
                         <span className="badge badge--paper" style={{ fontSize: 10, padding: "2px 6px", color: "var(--ink-soft)" }}>
-                          <Sparkles size={10} style={{ marginRight: 3, verticalAlign: "middle" }} /> AI Generated Response
+                          <Sparkles size={10} style={{ marginRight: 3, verticalAlign: "middle" }} /> {translate("AI Generated Response")}
                         </span>
                       )}
                       {m.medlineplusTopic?.url && (
@@ -3280,7 +3303,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
                           rel="noopener noreferrer"
                           style={{ fontSize: 10, color: "var(--teal)", textDecoration: "underline" }}
                         >
-                          View MedlinePlus topic
+                          {translate("View MedlinePlus topic")}
                         </a>
                       )}
                     </div>
@@ -3332,7 +3355,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
             {transcribing && (
               <div className="chat-bubble-wrap chat-bubble-user">
                 <div className="chat-bubble chat-bubble-transcribing">
-                  <Loader2 size={14} className="spin" /> Transcribing speech audio & auto-sending...
+                  <Loader2 size={14} className="spin" /> {translate("Transcribing speech audio & auto-sending...")}
                 </div>
               </div>
             )}
@@ -3412,25 +3435,25 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
   async function handleDownload() {
     try {
       await api.downloadDocumentFile(documentId, docRecord?.original_filename || "medical_document");
-      toast("Download started");
+      toast(translate(translate("Download started")));
     } catch (err) {
-      toast("Failed to download file: " + err.message, "error");
+      toast(translate("Failed to download file: ") + err.message, "error");
     }
   }
 
   function handleDelete() {
     showConfirm({
-      title: "Delete this document?",
-      message: "Are you sure you want to delete this document and all its extraction data? This action cannot be undone.",
+      title: translate(translate("Delete this document?")),
+      message: translate(translate("Are you sure you want to delete this document and all its extraction data? This action cannot be undone.")),
       danger: true,
-      confirmLabel: "Delete Document",
+      confirmLabel: translate(translate("Delete Document")),
       onConfirm: async () => {
         try {
           await api.deleteDocument(documentId);
-          toast("Document deleted successfully");
+          toast(translate(translate("Document deleted successfully")));
           onBack();
         } catch (err) {
-          toast("Failed to delete document: " + err.message, "error");
+          toast(translate("Failed to delete document: ") + err.message, "error");
         }
       },
     });
@@ -3484,9 +3507,9 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
               <div className="section" style={{ marginTop: 24 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                   <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, fontSize: 18, color: "var(--ink)" }}>
-                    <Activity size={20} color="var(--blue)" /> Lab & Diagnostic Results ({labResults.length})
+                    <Activity size={20} color="var(--blue)" /> {translate("Lab & Diagnostic Results (")}{labResults.length}{translate(")")}
                   </h2>
-                  <span className="badge badge--teal" style={{ fontSize: 11 }}>Structured Extraction</span>
+                  <span className="badge badge--teal" style={{ fontSize: 11 }}>{translate("Structured Extraction")}</span>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -3509,7 +3532,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
                         <span style={{ fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>{lab.test_name}</span>
                         {lab.reference_range && (
                           <span style={{ fontSize: 12, color: "var(--ink-soft)", marginLeft: 10 }}>
-                            Reference: {lab.reference_range}
+                            {translate("Reference:")} {lab.reference_range}
                           </span>
                         )}
                       </div>
@@ -3532,7 +3555,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
               <div className="section" style={{ marginTop: 24 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                   <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, fontSize: 18, color: "var(--ink)" }}>
-                    <Pill size={20} color="var(--teal)" /> {t("dashboard.prescribedMeds")} ({medications.length})
+                    <Pill size={20} color="var(--teal)" /> {t("dashboard.prescribedMeds")} {translate("(")}{medications.length}{translate(")")}
                   </h2>
                   <span className="badge badge--teal" style={{ fontSize: 11 }}>{t("docDetail.structuredExtraction")}</span>
                 </div>
@@ -3566,7 +3589,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
 
                         {med.instruction && (
                           <div style={{ fontSize: 12, color: "var(--teal)", marginTop: 6, fontStyle: "italic" }}>
-                            💡 {med.instruction}
+                            {translate("💡")} {med.instruction}
                           </div>
                         )}
                       </div>
@@ -3577,7 +3600,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
                         onClick={() => onNav("reminders", { medicine_name: med.name, dosage: `${med.dosage || ''} ${med.frequency || ''}`.trim(), document_id: documentId })}
                         style={{ fontSize: 12 }}
                       >
-                        <AlarmClock size={14} /> Set Reminder
+                        <AlarmClock size={14} /> {translate("Set Reminder")}
                       </button>
                     </div>
                   ))}
@@ -3611,7 +3634,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
                 <div className="explanation-block">
                   <div className="explanation-block__header">
                     <span className="lang-tag badge badge--gold">
-                      {getLanguageName(extraction.language)} (Translated)
+                      {getLanguageName(extraction.language)} {translate("(Translated)")}
                     </span>
                     <CopyButton text={extraction.translated_explanation} />
                   </div>
@@ -3646,17 +3669,17 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
                 <div className="doc-meta-item">
                   <span className="doc-meta-label">{t("docDetail.type")}</span>
                   <span className="badge badge--teal" style={{ textTransform: "capitalize" }}>
-                    {(extraction.document_type || "prescription").replace("_", " ")}
+                    {translateDocumentType(extraction.document_type || "prescription")}
                   </span>
                 </div>
                 <div className="doc-meta-item">
-                  <span className="doc-meta-label">{t("profile.targetLang")}:</span>
+                  <span className="doc-meta-label">{t("profile.targetLang")}{translate(":")}</span>
                   <span className="badge badge--gold">{getLanguageName(extraction.language)}</span>
                 </div>
                 <div className="doc-meta-item">
                   <span className="doc-meta-label">{t("docDetail.uploaded")}</span>
                   <span style={{ fontSize: "13px", color: "var(--ink)", fontWeight: 500 }}>
-                    {docRecord ? new Date(docRecord.uploaded_at).toLocaleDateString() : "N/A"}
+                    {docRecord ? formatAppDate(docRecord.uploaded_at) : translate("N/A")}
                   </span>
                 </div>
                 <div className="doc-meta-item">
@@ -3669,10 +3692,10 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
 
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border-soft)" }}>
                 <button className="btn btn--secondary" onClick={handleDownload} style={{ width: "100%", justifyContent: "center" }}>
-                  <Download size={15} /> Download original file
+                  <Download size={15} /> {translate("Download original file")}
                 </button>
                 <button className="btn btn--secondary" onClick={handleDelete} style={{ width: "100%", justifyContent: "center", color: "var(--brick)", borderColor: "rgba(192, 57, 43, 0.3)" }}>
-                  <Trash2 size={15} /> Delete document
+                  <Trash2 size={15} /> {translate("Delete document")}
                 </button>
               </div>
             </div>
@@ -3759,25 +3782,16 @@ function ProfileScreen({ user, patient, onNav, onLogout, onProfileUpdated }) {
     if (patient?.id) {
       navigator.clipboard.writeText(patient.id);
       setCopiedId(true);
-      toast("Patient ID copied to clipboard!");
+      toast(translate(translate("Patient ID copied to clipboard!")));
       setTimeout(() => setCopiedId(false), 2000);
     }
   }
 
   function handleCopyEmergencyPass() {
-    const passText = `=== SEHAT SAATHI EMERGENCY PATIENT PASS ===
-Name: ${name || 'N/A'}
-Patient ID: ${patient?.id || 'N/A'}
-Age / Gender: ${age ? age + ' yrs' : 'N/A'} / ${gender || 'N/A'}
-{t("profile.bloodGroup")}: ${bloodGroup || 'Unspecified'}
-Emergency Contact: ${emergencyContact || 'Not provided'}
-Known Allergies: ${allergies || 'None listed'}
-Medical Conditions: ${medicalConditions || 'None listed'}
-{t("dashboard.preferredLang")} ${preferredLang || 'Hindi'}
-===========================================`;
+    const passText = `${translate("Sehat Saathi").toUpperCase()} ${t("profile.emergencyPassTitle").toUpperCase()}\n${t("profile.patientName")}: ${name || translate("Not specified")}\n${translate("Patient ID")}: ${patient?.id || translate("Not specified")}\n${t("profile.ageGender")}: ${age ? `${age} ${translate("yrs")}` : translate("Not specified")} / ${gender ? translate(gender) : translate("Not specified")}\n${t("profile.bloodGroup")}: ${bloodGroup || translate("Not specified")}\n${t("profile.emergencyContact")}: ${emergencyContact || translate("Not set")}\n${t("profile.knownAllergies")}: ${allergies || translate("No allergies listed")}\n${t("profile.medicalConditions")}: ${medicalConditions || translate("No chronic conditions listed")}\n${t("dashboard.preferredLang")}: ${preferredLang || translate("Hindi")}`;
     navigator.clipboard.writeText(passText);
     setCopiedPass(true);
-    toast("Emergency Pass summary copied to clipboard!");
+    toast(translate(translate("Emergency Pass summary copied to clipboard!")));
     setTimeout(() => setCopiedPass(false), 2500);
   }
 
@@ -3802,11 +3816,11 @@ Medical Conditions: ${medicalConditions || 'None listed'}
         medical_conditions: medicalConditions,
       });
       setSuccess(true);
-      toast("Profile updated successfully!");
+      toast(translate(translate("Profile updated successfully!")));
       if (onProfileUpdated) onProfileUpdated(updated);
     } catch (err) {
       setError(err.message || "Failed to update profile.");
-      toast(err.message || "Failed to update profile", "error");
+      toast(err.message || translate("Failed to update profile"), "error");
     } finally {
       setSaving(false);
     }
@@ -3814,18 +3828,18 @@ Medical Conditions: ${medicalConditions || 'None listed'}
 
   function handleDeleteAccount() {
     showConfirm({
-      title: "Delete your account?",
-      message: "Warning: Deleting your profile will permanently delete all your uploaded documents and remove your account. This action cannot be undone.",
+      title: translate(translate("Delete your account?")),
+      message: translate(translate("Warning: Deleting your profile will permanently delete all your uploaded documents and remove your account. This action cannot be undone.")),
       danger: true,
-      confirmLabel: "Delete Account",
+      confirmLabel: translate(translate("Delete Account")),
       onConfirm: async () => {
         try {
           await api.deletePatient(patient.id);
-          toast("Account deleted");
+          toast(translate(translate("Account deleted")));
           api.logout();
           onLogout();
         } catch (err) {
-          toast("Failed to delete account: " + err.message, "error");
+          toast(translate("Failed to delete account: ") + err.message, "error");
         }
       },
     });
@@ -3866,12 +3880,12 @@ Medical Conditions: ${medicalConditions || 'None listed'}
               <div className="profile-hero-name-row">
                 <h2 className="profile-hero-name">{name || "Patient Profile"}</h2>
                 <span className="profile-badge profile-badge--verified">
-                  <BadgeCheck size={14} /> Registered Patient
+                  <BadgeCheck size={14} /> {translate("Registered Patient")}
                 </span>
               </div>
               <div className="profile-hero-meta">
                 <span className="profile-id-tag">
-                  ID: <code>{patient?.id || "N/A"}</code>
+                  {translate("ID:")} <code>{patient?.id || translate("N/A")}</code>
                   <button
                     type="button"
                     className="btn-icon-subtle"
@@ -3883,7 +3897,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
                 </span>
                 {user?.email && (
                   <span className="profile-meta-item">
-                    ✉️ {user.email}
+                    {translate("✉️")} {user.email}
                   </span>
                 )}
               </div>
@@ -3893,7 +3907,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
           <div className="profile-completion-box">
             <div className="profile-completion-header">
               <span className="completion-title">{t("profile.completeness")}</span>
-              <span className="completion-percent">{completionScore}%</span>
+              <span className="completion-percent">{completionScore}{translate("%")}</span>
             </div>
             <div className="profile-completion-bar-bg">
               <div
@@ -3904,7 +3918,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
             {firstMissing && completionScore < 100 && (
               <p className="completion-hint">
                 <Sparkles size={13} style={{ display: "inline", marginRight: 5, color: "var(--amber)" }} />
-                Add your <strong>&nbsp;{firstMissing.name}&nbsp;</strong> to reach 100% completion.
+                {translate("Add your")} <strong>&nbsp;{firstMissing.name}&nbsp;</strong> {translate("to reach 100% completion.")}
               </p>
             )}
           </div>
@@ -4004,15 +4018,15 @@ Medical Conditions: ${medicalConditions || 'None listed'}
             <div className="profile-form-grid">
               <Field label={t("profile.bloodGroup")}>
                 <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)}>
-                  <option value="">Select {t("profile.bloodGroup")}</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
+                  <option value="">{translate("Select")} {t("profile.bloodGroup")}</option>
+                  <option value="A+">{translate("A+")}</option>
+                  <option value="A-">{translate("A-")}</option>
+                  <option value="B+">{translate("B+")}</option>
+                  <option value="B-">{translate("B-")}</option>
+                  <option value="O+">{translate("O+")}</option>
+                  <option value="O-">{translate("O-")}</option>
+                  <option value="AB+">{translate("AB+")}</option>
+                  <option value="AB-">{translate("AB-")}</option>
                 </select>
               </Field>
 
@@ -4026,7 +4040,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
               </Field>
 
               <div className="profile-field-full">
-                <Field label={t("profile.knownAllergies")} hint="e.g. Penicillin, Sulfa drugs, Peanuts, Latex">
+                <Field label={t("profile.knownAllergies")} hint={translate("e.g. Penicillin, Sulfa drugs, Peanuts, Latex")}>
                   <input
                     type="text"
                     value={allergies}
@@ -4037,7 +4051,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
               </div>
 
               <div className="profile-field-full">
-                <Field label={t("profile.medicalBaseline")} hint="e.g. Type 2 Diabetes, Hypertension, Asthma">
+                <Field label={t("profile.medicalBaseline")} hint={translate("e.g. Type 2 Diabetes, Hypertension, Asthma")}>
                   <textarea
                     rows={2}
                     value={medicalConditions}
@@ -4062,7 +4076,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
             </div>
 
             <div className="profile-form-grid">
-              <Field label={t("dashboard.preferredLang")} hint="Used automatically when processing uploaded prescriptions">
+              <Field label={t("dashboard.preferredLang")} hint={translate("Used automatically when processing uploaded prescriptions")}>
                 <select value={preferredLang} onChange={(e) => setPreferredLang(e.target.value)}>
                   {LANGUAGES.map((l) => (
                     <option key={l.code} value={l.name}>
@@ -4074,9 +4088,9 @@ Medical Conditions: ${medicalConditions || 'None listed'}
 
               <Field label={t("profile.audioSpeed")} hint={t("profile.audioSpeedHint")}>
                 <select value={narrationSpeed} onChange={(e) => setNarrationSpeed(e.target.value)}>
-                  <option value="0.8">0.8x (Slower & Clearer)</option>
-                  <option value="1.0">1.0x (Standard Speed)</option>
-                  <option value="1.2">1.2x (Faster)</option>
+                  <option value="0.8">{translate("0.8x (Slower & Clearer)")}</option>
+                  <option value="1.0">{translate("1.0x (Standard Speed)")}</option>
+                  <option value="1.2">{translate("1.2x (Faster)")}</option>
                 </select>
               </Field>
             </div>
@@ -4097,7 +4111,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
             <div className="emergency-pass-body">
               <div className="emergency-pass-chip-header">
                 <div className="pass-chip-title">{t("profile.emergencyPassTitle")}</div>
-                <div className="pass-chip-id">ID: {patient?.id || "N/A"}</div>
+                <div className="pass-chip-id">{translate("ID:")} {patient?.id || translate("N/A")}</div>
               </div>
 
               <div className="emergency-pass-details">
@@ -4107,23 +4121,23 @@ Medical Conditions: ${medicalConditions || 'None listed'}
                 </div>
                 <div className="pass-detail-item">
                   <span className="pass-label">{t("profile.ageGender")}</span>
-                  <span className="pass-val">{age ? `${age} yrs` : "—"} / {gender || "—"}</span>
+                  <span className="pass-val">{age ? `${age} ${translate("yrs")}` : translate("Not specified")} {translate("/")} {gender ? translate(gender) : translate("Not specified")}</span>
                 </div>
                 <div className="pass-detail-item">
                   <span className="pass-label">{t("profile.bloodGroup")}</span>
-                  <span className="pass-val pass-highlight">{bloodGroup || "Not specified"}</span>
+                  <span className="pass-val pass-highlight">{bloodGroup || translate("Not specified")}</span>
                 </div>
                 <div className="pass-detail-item">
                   <span className="pass-label">{t("profile.emergencyContact")}</span>
-                  <span className="pass-val">{emergencyContact || "Not set"}</span>
+                  <span className="pass-val">{emergencyContact || translate("Not set")}</span>
                 </div>
                 <div className="pass-detail-item full-width">
                   <span className="pass-label">{t("profile.knownAllergies")}</span>
-                  <span className="pass-val">{allergies || "No allergies listed"}</span>
+                  <span className="pass-val">{allergies || translate("No allergies listed")}</span>
                 </div>
                 <div className="pass-detail-item full-width">
                   <span className="pass-label">{t("profile.medicalConditions")}</span>
-                  <span className="pass-val">{medicalConditions || "No chronic conditions listed"}</span>
+                  <span className="pass-val">{medicalConditions || translate("No chronic conditions listed")}</span>
                 </div>
               </div>
 
@@ -4171,7 +4185,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
           </div>
 
           <p style={{ color: "var(--ink-soft)", fontSize: 13.5, marginBottom: 16 }}>
-            Deleting your profile will permanently erase all uploaded medical documents, translated records, and login credentials.
+            {translate("Deleting your profile will permanently erase all uploaded medical documents, translated records, and login credentials.")}
           </p>
 
           <button
@@ -4180,7 +4194,7 @@ Medical Conditions: ${medicalConditions || 'None listed'}
             onClick={handleDeleteAccount}
             style={{ color: "var(--brick)", borderColor: "rgba(225, 29, 72, 0.4)" }}
           >
-            <Trash2 size={15} /> Delete my account
+            <Trash2 size={15} /> {translate("Delete my account")}
           </button>
         </div>
       </div>
@@ -4390,7 +4404,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
 
   function handleDetectGPS() {
     if (!navigator.geolocation) {
-      toast("Geolocation is not supported by your browser.", "error");
+      toast(translate(translate("Geolocation is not supported by your browser.")), "error");
       setGpsStatus("denied");
       fetchFacilities(28.6139, 77.2090, radiusKm, facilityType);
       return;
@@ -4405,7 +4419,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
         fetchFacilities(lat, lng, radiusKm, facilityType);
       },
       () => {
-        toast("GPS access unavailable. Using central regional locator.", "error");
+        toast(translate(translate("GPS access unavailable. Using central regional locator.")), "error");
         setGpsStatus("denied");
         const defaultLat = 28.6139;
         const defaultLng = 77.2090;
@@ -4422,7 +4436,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
       const data = await api.getNearbyFacilities(lat, lng, rKm, fType);
       setFacilities(data.facilities || []);
     } catch (err) {
-      toast("Failed to load facilities: " + err.message, "error");
+      toast(translate("Failed to load facilities: ") + err.message, "error");
     } finally {
       setLoadingFacilities(false);
     }
@@ -4439,7 +4453,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
   function handleManualSearch(e) {
     e.preventDefault();
     if (!manualCity.trim()) return;
-    toast(`Searching healthcare facilities in "${manualCity}"...`);
+    toast(translate("Searching healthcare facilities in \"") + manualCity + translate("\"..."));
     const lat = userCoords?.lat || 28.6139;
     const lng = userCoords?.lng || 77.2090;
     fetchFacilities(lat, lng, radiusKm, facilityType);
@@ -4460,21 +4474,21 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
   async function handleCopyLocationLink() {
     try {
       await navigator.clipboard.writeText(getEmergencyLocationText());
-      toast("Emergency location link copied to clipboard!");
+      toast(translate(translate("Emergency location link copied to clipboard!")));
     } catch (err) {
-      toast("Failed to copy link: " + err.message, "error");
+      toast(translate("Failed to copy link: ") + err.message, "error");
     }
   }
 
   function handleDispatchSubmit(e) {
     e.preventDefault();
     showConfirm({
-      title: "Confirm Emergency Ambulance Request?",
-      message: `Requesting 108 Emergency Ambulance dispatch for condition: "${patientCondition}". Ensure your location is clear.`,
-      confirmLabel: "Call 108 Ambulance Now",
+      title: translate(translate("Confirm Emergency Ambulance Request?")),
+      message: translate("Requesting 108 Emergency Ambulance dispatch for condition: \"") + patientCondition + translate("\". Ensure your location is clear."),
+      confirmLabel: translate(translate("Call 108 Ambulance Now")),
       onConfirm: () => {
         window.location.href = "tel:108";
-        toast("Initiating 108 Ambulance Dispatch Call...", "success");
+        toast(translate(translate("Initiating 108 Ambulance Dispatch Call...")), "success");
       },
     });
   }
@@ -4506,7 +4520,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
           <div>
             <h2 className="emergency-banner-title">{t("emergency.title")}</h2>
             <p className="emergency-banner-sub">
-              If someone is unresponsive or in critical danger, call National Emergency <strong>112</strong> or Medical Helpline <strong>108</strong> immediately.
+              {translate("If someone is unresponsive or in critical danger, call National Emergency")} <strong>{translate("112")}</strong> {translate("or Medical Helpline")} <strong>{translate("108")}</strong> {translate("immediately.")}
             </p>
           </div>
         </div>
@@ -4599,7 +4613,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                     className={`chip-btn ${radiusKm === r ? "active" : ""}`}
                     onClick={() => handleRefetchWithParams(r, facilityType)}
                   >
-                    {r} km
+                    {r} {translate("km")}
                   </button>
                 ))}
               </div>
@@ -4658,7 +4672,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                       </div>
                     </div>
                     <div className="facility-dist-pill">
-                      <strong>{f.distance_km} km</strong> away
+                      <strong>{f.distance_km} {translate("km")}</strong> {translate("away")}
                     </div>
                   </div>
 
@@ -4669,7 +4683,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                   <div className="facility-actions">
                     {f.phone && (
                       <a href={`tel:${f.phone}`} className="btn btn--secondary btn--sm">
-                        <PhoneCall size={13} /> Call: {f.phone}
+                        <PhoneCall size={13} /> {translate("Call:")} {f.phone}
                       </a>
                     )}
                     <a
@@ -4678,7 +4692,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                       rel="noopener noreferrer"
                       className="btn btn--primary btn--sm"
                     >
-                      <Navigation size={13} /> Directions & Maps <ExternalLink size={11} />
+                      <Navigation size={13} /> {translate("Directions & Maps")} <ExternalLink size={11} />
                     </a>
                   </div>
                 </div>
@@ -4695,7 +4709,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
             <div>
               <h2 style={{ margin: 0, fontSize: 18 }}>{t("emergency.firstAidTitle")}</h2>
               <p style={{ margin: "4px 0 0", color: "var(--ink-soft)", fontSize: 13 }}>
-                Essential medical response procedures for life-threatening emergencies and injuries
+                {translate("Essential medical response procedures for life-threatening emergencies and injuries")}
               </p>
             </div>
 
@@ -4747,8 +4761,8 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                         <ShieldAlert size={18} />
                       </div>
                       <div>
-                        <h3 className="guide-title">{guide.title}</h3>
-                        <p className="guide-summary">{guide.summary}</p>
+                        <h3 className="guide-title">{translate(guide.title)}</h3>
+                        <p className="guide-summary">{translate(guide.summary)}</p>
                       </div>
                     </div>
                     <span className={`badge badge--${guide.severity === "CRITICAL" ? "brick" : "gold"}`}>
@@ -4763,22 +4777,22 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                         {guide.steps.map((step, idx) => (
                           <li key={idx}>
                             <span className="step-num">{idx + 1}</span>
-                            <span>{step}</span>
+                            <span>{translate(step)}</span>
                           </li>
                         ))}
                       </ol>
 
                       <div className="guide-dos-donts">
                         <div className="dos-box">
-                          <h5 style={{ color: "#15803d", margin: "0 0 8px" }}>✔ What to DO</h5>
+                          <h5 style={{ color: "#15803d", margin: "0 0 8px" }}>{translate("✔ What to DO")}</h5>
                           <ul>
                             {guide.dos.map((d, i) => (
-                              <li key={i}>{d}</li>
+                              <li key={i}>{translate(d)}</li>
                             ))}
                           </ul>
                         </div>
                         <div className="donts-box">
-                          <h5 style={{ color: "#b91c1c", margin: "0 0 8px" }}>✖ What NOT to do</h5>
+                          <h5 style={{ color: "#b91c1c", margin: "0 0 8px" }}>{translate("✖ What NOT to do")}</h5>
                           <ul>
                             {guide.donts.map((d, i) => (
                               <li key={i}>{d}</li>
@@ -4790,7 +4804,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                       <div className="guide-footer-call">
                         <span>{t("emergency.needAmbulance")}</span>
                         <a href="tel:108" className="btn btn--emergency-dial btn--sm">
-                          <PhoneCall size={13} /> Call 108 Ambulance
+                          <PhoneCall size={13} /> {translate("Call 108 Ambulance")}
                         </a>
                       </div>
                     </div>
@@ -4807,7 +4821,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
         <div className="section" style={{ marginTop: 20 }}>
           <h2>{t("emergency.nationalHelplines")}</h2>
           <p style={{ color: "var(--ink-soft)", fontSize: 13, marginBottom: 16 }}>
-            Free, toll-free 24/7 national emergency telephone assistance lines
+            {translate("Free, toll-free 24/7 national emergency telephone assistance lines")}
           </p>
 
           <div className="helpline-grid">
@@ -4816,12 +4830,12 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                 <div className="helpline-card__content">
                   <div className="helpline-number-badge">{h.number}</div>
                   <div>
-                    <h3 className="helpline-title">{h.label}</h3>
-                    <p className="helpline-sub">{h.subtitle}</p>
+                    <h3 className="helpline-title">{translate(h.label)}</h3>
+                    <p className="helpline-sub">{translate(h.subtitle)}</p>
                   </div>
                 </div>
                 <a href={`tel:${h.number}`} className="btn btn--emergency-dial">
-                  <PhoneCall size={15} /> Call {h.number}
+                  <PhoneCall size={15} /> {translate("Call")} {h.number}
                 </a>
               </div>
             ))}
@@ -4841,10 +4855,10 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
                   <a href={`tel:${patientProfile.emergency_contact}`} className="btn btn--primary">
-                    <PhoneCall size={15} /> Call Saved Contact
+                    <PhoneCall size={15} /> {translate("Call Saved Contact")}
                   </a>
                   <button className="btn btn--secondary" onClick={handleShareWhatsApp}>
-                    <Share2 size={15} /> SMS Location
+                    <Share2 size={15} /> {translate("SMS Location")}
                   </button>
                 </div>
               </div>
@@ -4852,7 +4866,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <p style={{ margin: 0, color: "var(--ink-soft)" }}>{t("emergency.noContactYet")}</p>
                 <button className="btn btn--secondary" onClick={() => onNav("profile")}>
-                  + Add in Profile
+                  {translate("+ Add in Profile")}
                 </button>
               </div>
             )}
@@ -4868,7 +4882,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
             <div className="doc-detail-main">
               <h2>{t("emergency.locationBroadcast")}</h2>
               <p style={{ color: "var(--ink-soft)", fontSize: 13, marginBottom: 16 }}>
-                Share your exact GPS coordinates and map directions instantly with family or ambulance drivers.
+                {translate("Share your exact GPS coordinates and map directions instantly with family or ambulance drivers.")}
               </p>
 
               <div className="location-broadcast-card">
@@ -4879,10 +4893,10 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
 
                 <div className="broadcast-actions">
                   <button className="btn btn--whatsapp-share" onClick={handleShareWhatsApp}>
-                    <Share2 size={16} /> Share via WhatsApp
+                    <Share2 size={16} /> {translate("Share via WhatsApp")}
                   </button>
                   <button className="btn btn--secondary" onClick={handleCopyLocationLink}>
-                    <Copy size={16} /> Copy Location Text
+                    <Copy size={16} /> {translate("Copy Location Text")}
                   </button>
                 </div>
               </div>
@@ -4896,12 +4910,12 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                   <div>
                     <h3 style={{ margin: 0, fontSize: 16 }}>{t("emergency.govAmbulance")}</h3>
                     <p style={{ margin: "2px 0 0", color: "var(--ink-soft)", fontSize: 12 }}>
-                      Dial 108 (National Medical Emergency Response Service)
+                      {translate("Dial 108 (National Medical Emergency Response Service)")}
                     </p>
                   </div>
                 </div>
                 <a href="tel:108" className="btn btn--emergency-dial" style={{ padding: "10px 20px" }}>
-                  <PhoneCall size={16} /> Dial 108 Ambulance
+                  <PhoneCall size={16} /> {translate("Dial 108 Ambulance")}
                 </a>
               </div>
             </div>
@@ -4949,7 +4963,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                   </Field>
 
                   <button type="submit" className="btn btn--emergency-dial" style={{ width: "100%", justifyContent: "center", marginTop: 6 }}>
-                    <PhoneCall size={16} /> Dispatch Emergency Call (108)
+                    <PhoneCall size={16} /> {translate("Dispatch Emergency Call (108)")}
                   </button>
                 </form>
               </div>
@@ -5031,9 +5045,9 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
       setNewPatientName("");
       setNewPatientPhone("");
       setNewPatientAge("");
-      toast("Patient registered successfully!");
+      toast(translate(translate("Patient registered successfully!")));
     } catch (err) {
-      toast("Failed to register patient: " + err.message, "error");
+      toast(translate("Failed to register patient: ") + err.message, "error");
     } finally {
       setAddingPatient(false);
     }
@@ -5091,14 +5105,14 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
           onClick={() => setTab("patients")}
         >
           <Users size={15} style={{ marginRight: 6, verticalAlign: "middle" }} />
-          {t("nav.patientDirectory")} ({patients.length})
+          {t("nav.patientDirectory")} {translate("(")}{patients.length}{translate(")")}
         </button>
         <button
           className={`tab-btn ${tab === "documents" ? "active" : ""}`}
           onClick={() => setTab("documents")}
         >
           <FileText size={15} style={{ marginRight: 6, verticalAlign: "middle" }} />
-          {t("nav.documents")} ({allDocs.length})
+          {t("nav.documents")} {translate("(")}{allDocs.length}{translate(")")}
         </button>
         <button
           className={`tab-btn ${tab === "stages" ? "active" : ""}`}
@@ -5108,7 +5122,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
           }}
         >
           <Layers size={15} style={{ marginRight: 6, verticalAlign: "middle" }} />
-          Pipeline Stages Inspector
+          {translate("Pipeline Stages Inspector")}
         </button>
       </div>
 
@@ -5153,14 +5167,14 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                   onClick={() => setViewMode("grid")}
                   title={t("worker.gridCardsView")}
                 >
-                  <Grid size={15} style={{ marginRight: 4 }} /> Cards
+                  <Grid size={15} style={{ marginRight: 4 }} /> {translate("Cards")}
                 </button>
                 <button
                   className={`view-mode-btn ${viewMode === "table" ? "active" : ""}`}
                   onClick={() => setViewMode("table")}
                   title={t("worker.tableListView")}
                 >
-                  <List size={15} style={{ marginRight: 4 }} /> List
+                  <List size={15} style={{ marginRight: 4 }} /> {translate("List")}
                 </button>
               </div>
 
@@ -5210,10 +5224,10 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                           <div className="patient-card__avatar">{initials}</div>
                           <div className="patient-card__title-wrap">
                             <div className="patient-card__name" title={p.name}>
-                              {p.name || "Unnamed Patient"}
+                              {p.name || translate("Unnamed Patient")}
                             </div>
                             <span className="patient-card__id-badge">
-                              ID: {p.id ? (p.id.length > 12 ? p.id.slice(0, 10) + "…" : p.id) : "N/A"}
+                              {translate("ID:")} {p.id ? (p.id.length > 12 ? p.id.slice(0, 10) + "…" : p.id) : translate("N/A")}
                             </span>
                           </div>
                         </div>
@@ -5222,23 +5236,23 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                         <div className="patient-card__body">
                           <div className="patient-card__row">
                             <User size={14} />
-                            <span className="patient-card__label">{t("worker.demographics")}:</span>
+                            <span className="patient-card__label">{t("worker.demographics")}{translate(":")}</span>
                             <span className="patient-card__val">
-                              {p.age ? `${p.age} yrs` : "Age unrecorded"} · {p.gender || "Gender unrecorded"}
+                              {p.age ? `${p.age} ${translate("yrs")}` : translate("Age unrecorded")} {translate("·")} {p.gender ? translate(p.gender) : translate("Gender unrecorded")}
                             </span>
                           </div>
 
                           <div className="patient-card__row">
                             <Phone size={14} />
-                            <span className="patient-card__label">{t("worker.phone")}:</span>
-                            <span className="patient-card__val">{p.phone_number || "Not provided"}</span>
+                            <span className="patient-card__label">{t("worker.phone")}{translate(":")}</span>
+                            <span className="patient-card__val">{p.phone_number || translate("Not provided")}</span>
                           </div>
 
                           <div className="patient-card__row">
                             <FileText size={14} />
-                            <span className="patient-card__label">{t("worker.documents")}:</span>
+                            <span className="patient-card__label">{t("worker.documents")}{translate(":")}</span>
                             <span className="patient-card__val">
-                              {docCount} {docCount === 1 ? "record" : "records"}
+                              {docCount} {translate(docCount === 1 ? "record" : "records")}
                             </span>
                           </div>
 
@@ -5265,7 +5279,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                             onOpenPatient(p);
                           }}
                         >
-                          View Records <ChevronRight size={15} />
+                          {translate("View Records")} <ChevronRight size={15} />
                         </button>
                       </div>
                     </div>
@@ -5323,10 +5337,10 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                           </td>
                           <td>
                             <span style={{ fontWeight: 500 }}>
-                              {p.age ? `${p.age} yrs` : "Age N/A"}
+                              {p.age ? `${p.age} ${translate("yrs")}` : translate("Age N/A")}
                             </span>
                             <span style={{ color: "var(--ink-soft)", marginLeft: 4 }}>
-                              ({p.gender || "Unspecified"})
+                              {translate("(")}{p.gender ? translate(p.gender) : translate("Unspecified")}{translate(")")}
                             </span>
                           </td>
                           <td style={{ color: "var(--ink-soft)" }}>
@@ -5358,7 +5372,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                                 onOpenPatient(p);
                               }}
                             >
-                              Open <ChevronRight size={14} />
+                              {translate("Open")} <ChevronRight size={14} />
                             </button>
                           </td>
                         </tr>
@@ -5382,9 +5396,9 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
       {tab === "documents" && (
         <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ margin: 0 }}>All Processed Documents ({allDocs.length})</h2>
+            <h2 style={{ margin: 0 }}>{translate("All Processed Documents (")}{allDocs.length}{translate(")")}</h2>
             <button className="btn btn--secondary" onClick={loadData} style={{ padding: "6px 12px", fontSize: 12 }}>
-              <RefreshCw size={13} /> Refresh
+              <RefreshCw size={13} /> {translate("Refresh")}
             </button>
           </div>
 
@@ -5409,9 +5423,9 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                     style={{ cursor: "pointer" }}
                   >
                     <div>
-                      <div className="doc-row__type">{doc.document_type || "Medical Document"}</div>
+                      <div className="doc-row__type">{(translateDocumentType(doc.document_type) || translate("Medical Document"))}</div>
                       <div className="doc-row__meta">
-                        {doc.original_filename} · Patient ID: {doc.patient_id ? doc.patient_id.slice(0, 8) : "—"} · {new Date(doc.uploaded_at).toLocaleDateString()}
+                        {doc.original_filename} {translate("· Patient ID:")} {doc.patient_id ? doc.patient_id.slice(0, 8) : "—"} {translate("·")} {formatAppDate(doc.uploaded_at)}
                       </div>
                     </div>
                     <div className="doc-row__right">
@@ -5422,9 +5436,9 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                           e.stopPropagation();
                           try {
                             await api.downloadDocumentFile(doc.id, doc.original_filename);
-                            toast("Download started");
+                            toast(translate(translate("Download started")));
                           } catch (err) {
-                            toast("Download failed: " + err.message, "error");
+                            toast(translate("Download failed: ") + err.message, "error");
                           }
                         }}
                         title={t("dashboard.downloadOriginal")}
@@ -5437,17 +5451,17 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                         onClick={(e) => {
                           e.stopPropagation();
                           showConfirm({
-                            title: "Delete this document?",
-                            message: "Are you sure you want to delete this document?",
+                            title: translate(translate("Delete this document?")),
+                            message: translate(translate("Are you sure you want to delete this document?")),
                             danger: true,
-                            confirmLabel: "Delete Document",
+                            confirmLabel: translate(translate("Delete Document")),
                             onConfirm: async () => {
                               try {
                                 await api.deleteDocument(doc.id);
                                 setAllDocs((prev) => prev.filter((d) => d.id !== doc.id));
-                                toast("Document deleted");
+                                toast(translate(translate("Document deleted")));
                               } catch (err) {
-                                toast("Failed to delete document: " + err.message, "error");
+                                toast(translate("Failed to delete document: ") + err.message, "error");
                               }
                             },
                           });
@@ -5476,7 +5490,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
         <div className="section">
           <h2>{t("admin.pipelineDebugger")}</h2>
           <p style={{ color: "var(--ink-soft)", fontSize: 13.5, marginBottom: 16 }}>
-            Inspect the intermediate artifacts produced by the OCR and Groq processing stages.
+            {translate("Inspect the intermediate artifacts produced by the OCR and Groq processing stages.")}
           </p>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
@@ -5499,13 +5513,13 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
 
           <div style={{ background: "var(--panel)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-m)", padding: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13, color: "var(--ink-soft)" }}>
-              <span>{t("admin.viewing")}: <strong>{selectedStageFile}</strong></span>
+              <span>{t("admin.viewing")}{translate(":")} <strong>{selectedStageFile}</strong></span>
               <button
                 className="btn btn--secondary"
                 style={{ padding: "4px 8px", fontSize: 11 }}
                 onClick={() => handleViewStage(selectedStageFile)}
               >
-                Reload Stage
+                {translate("Reload Stage")}
               </button>
             </div>
             {loadingStage ? (
@@ -5652,9 +5666,9 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
       });
       setPatientData(updated);
       setEditing(false);
-      toast("Patient details updated successfully!");
+      toast(translate(translate("Patient details updated successfully!")));
     } catch (err) {
-      toast("Failed to update patient: " + err.message, "error");
+      toast(translate("Failed to update patient: ") + err.message, "error");
     }
   }
 
@@ -5664,8 +5678,8 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
       active="dashboard"
       onNav={onNav}
       onLogout={onLogout}
-      title={patientData.name || "Patient Record"}
-      subtitle={`${patientData.age ? `${patientData.age} yrs · ` : ""}${patientData.gender || "Gender unrecorded"} · Phone: ${patientData.phone_number || "—"} · Preferred: ${patientData.preferred_language || "Hindi"}`}
+      title={patientData.name || translate("Patient Record")}
+      subtitle={`${patientData.age ? `${patientData.age} ${translate("yrs")} · ` : ""}${patientData.gender ? translate(patientData.gender) : translate("Gender unrecorded")} · ${translate("Phone")}: ${patientData.phone_number || "—"} · ${translate("Preferred")}: ${translate(patientData.preferred_language || "Hindi")}`}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <button className="back-link" onClick={onBack} style={{ margin: 0 }}>
@@ -5715,23 +5729,23 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
 
       <div className="section">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <h2 style={{ margin: 0 }}>Documents for {patientData.name ? patientData.name.split(" ")[0] : "this patient"} ({documents.length})</h2>
+          <h2 style={{ margin: 0 }}>{translate("Documents for")} {patientData.name ? patientData.name.split(" ")[0] : "this patient"} {translate("(")}{documents.length}{translate(")")}</h2>
           <button className="btn btn--primary" onClick={() => onUploadFor(patientData)}>
-            <UploadCloud size={15} /> Upload document
+            <UploadCloud size={15} /> {translate("Upload document")}
           </button>
         </div>
 
         {loading ? (
           <div className="loading-box">
             <div className="pulse-ring" />
-            <p style={{ color: "var(--ink-soft)", margin: 0 }}>Loading patient documents...</p>
+            <p style={{ color: "var(--ink-soft)", margin: 0 }}>{translate("Loading patient documents...")}</p>
           </div>
         ) : documents.length === 0 ? (
           <div className="empty-state">
             <FileText size={36} color="var(--ink-faint)" />
             <p>{t("worker.noDocsForPatient")}</p>
             <button className="btn btn--primary" onClick={() => onUploadFor(patientData)}>
-              <UploadCloud size={15} /> Upload a document now
+              <UploadCloud size={15} /> {translate("Upload a document now")}
             </button>
           </div>
         ) : (
@@ -5745,9 +5759,9 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
                   style={{ cursor: "pointer" }}
                 >
                   <div>
-                    <div className="doc-row__type">{doc.document_type || "Medical Document"}</div>
+                    <div className="doc-row__type">{translateDocumentType(doc.document_type) || translate("Medical Document")}</div>
                     <div className="doc-row__meta">
-                      {doc.original_filename} · {new Date(doc.uploaded_at).toLocaleDateString()}
+                      {doc.original_filename} {translate("·")} {formatAppDate(doc.uploaded_at)}
                     </div>
                   </div>
                   <div className="doc-row__right">
@@ -5759,9 +5773,9 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
                         e.stopPropagation();
                         try {
                           await api.downloadDocumentFile(doc.id, doc.original_filename);
-                          toast("Download started");
+                          toast(translate(translate("Download started")));
                         } catch (err) {
-                          toast("Download failed: " + err.message, "error");
+                          toast(translate("Download failed: ") + err.message, "error");
                         }
                       }}
                       title={t("dashboard.downloadOriginal")}
@@ -5774,17 +5788,17 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
                       onClick={(e) => {
                         e.stopPropagation();
                         showConfirm({
-                          title: "Delete this document?",
-                          message: "Are you sure you want to delete this document?",
+                          title: translate(translate("Delete this document?")),
+                          message: translate(translate("Are you sure you want to delete this document?")),
                           danger: true,
-                          confirmLabel: "Delete Document",
+                          confirmLabel: translate(translate("Delete Document")),
                           onConfirm: async () => {
                             try {
                               await api.deleteDocument(doc.id);
                               setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
-                              toast("Document deleted");
+                              toast(translate(translate("Document deleted")));
                             } catch (err) {
-                              toast("Failed to delete document: " + err.message, "error");
+                              toast(translate("Failed to delete document: ") + err.message, "error");
                             }
                           },
                         });
@@ -5888,7 +5902,7 @@ function AdminOverviewPanel() {
           <div className="admin-stat-card__value">{stats.total_users ?? 0}</div>
           <div className="admin-stat-card__label">{t("nav.users")}</div>
           <div className="admin-stat-card__sub">
-            {stats.users_by_role?.patient ?? 0} {t("role.patient")} · {stats.users_by_role?.healthcare_worker ?? 0} {t("role.worker")} · {stats.users_by_role?.admin ?? 0} {t("role.admin")}
+            {stats.users_by_role?.patient ?? 0} {t("role.patient")} {translate("·")} {stats.users_by_role?.healthcare_worker ?? 0} {t("role.worker")} {translate("·")} {stats.users_by_role?.admin ?? 0} {t("role.admin")}
           </div>
         </div>
 
@@ -5902,7 +5916,7 @@ function AdminOverviewPanel() {
           <div className="admin-stat-card__icon"><FileText size={18} /></div>
           <div className="admin-stat-card__value">{stats.total_documents ?? 0}</div>
           <div className="admin-stat-card__label">{t("nav.documents")}</div>
-          <div className="admin-stat-card__sub">{stats.total_extractions ?? 0} processed</div>
+          <div className="admin-stat-card__sub">{stats.total_extractions ?? 0} {translate("processed")}</div>
         </div>
 
         <div className="admin-stat-card admin-stat-card--gold">
@@ -5910,7 +5924,7 @@ function AdminOverviewPanel() {
           <div className="admin-stat-card__value">{stats.total_healthcare_workers ?? 0}</div>
           <div className="admin-stat-card__label">{t("role.worker")}</div>
           <div className="admin-stat-card__sub">
-            {stats.verified_workers ?? 0} verified · {stats.unverified_workers ?? 0} pending
+            {stats.verified_workers ?? 0} {translate("verified ·")} {stats.unverified_workers ?? 0} {translate("pending")}
           </div>
         </div>
       </div>
@@ -5920,9 +5934,9 @@ function AdminOverviewPanel() {
         <div className="admin-panel">
           <div className="admin-panel__header">
             <h3 className="admin-panel__title">
-              <Globe size={15} /> Language Usage
+              <Globe size={15} /> {translate("Language Usage")}
             </h3>
-            <span className="admin-panel__count">{stats.language_breakdown?.length ?? 0} languages</span>
+            <span className="admin-panel__count">{stats.language_breakdown?.length ?? 0} {translate("languages")}</span>
           </div>
           {stats.language_breakdown?.length ? (
             <div className="admin-lang-chart">
@@ -5948,7 +5962,7 @@ function AdminOverviewPanel() {
         <div className="admin-panel">
           <div className="admin-panel__header">
             <h3 className="admin-panel__title">
-              <Activity size={15} /> Recent Uploads
+              <Activity size={15} /> {translate("Recent Uploads")}
             </h3>
             <span className="admin-panel__count">{t("admin.lastTen") || "last 10"}</span>
           </div>
@@ -5961,11 +5975,11 @@ function AdminOverviewPanel() {
                     <div className="admin-activity-text">
                       <strong>{doc.original_filename || "Unnamed file"}</strong>
                       {doc.document_type && (
-                        <> · <span style={{ color: "var(--ink-soft)", fontSize: 12 }}>{doc.document_type}</span></>
+                        <> {translate("·")} <span style={{ color: "var(--ink-soft)", fontSize: 12 }}>{translateDocumentType(doc.document_type)}</span></>
                       )}
                     </div>
                     <div className="admin-activity-time">
-                      {new Date(doc.uploaded_at).toLocaleDateString()}
+                      {formatAppDate(doc.uploaded_at)}
                     </div>
                   </li>
                 ))}
@@ -6007,10 +6021,10 @@ function AdminUsersPanel() {
     setUpdating(user.id);
     try {
       await api.admin.updateUser(user.id, { role: "admin" });
-      toast(`${user.name || user.email} promoted to Admin`);
+      toast((user.name || user.email) + translate(" promoted to Admin"));
       load();
     } catch (err) {
-      toast("Failed: " + err.message, "error");
+      toast(translate("Failed: ") + err.message, "error");
     } finally { setUpdating(null); }
   }
 
@@ -6020,28 +6034,26 @@ function AdminUsersPanel() {
     const newState = !user.is_verified;
     try {
       await api.admin.updateUser(user.id, { is_verified: newState });
-      toast(newState ? "Worker verified" : "Verification revoked");
+      toast(newState ? translate("Worker verified") : translate("Verification revoked"));
       load();
     } catch (err) {
-      toast("Failed: " + err.message, "error");
+      toast(translate("Failed: ") + err.message, "error");
     } finally { setUpdating(null); }
   }
 
   function handleDelete(user) {
     showConfirm({
-      title: "Delete user account?",
-      message: `This will permanently delete ${user.name || user.email}${
-        user.role === "patient" ? " and their linked patient profile and documents" : ""
-      }.`,
+      title: translate(translate("Delete user account?")),
+      message: translate("This will permanently delete ") + (user.name || user.email) + (user.role === "patient" ? translate(" and their linked patient profile and documents") : "") + translate("."),
       danger: true,
-      confirmLabel: "Delete User",
+      confirmLabel: translate(translate("Delete User")),
       onConfirm: async () => {
         try {
           await api.admin.deleteUser(user.id);
-          toast("User deleted");
+          toast(translate(translate("User deleted")));
           load();
         } catch (err) {
-          toast("Failed: " + err.message, "error");
+          toast(translate("Failed: ") + err.message, "error");
         }
       },
     });
@@ -6112,11 +6124,11 @@ function AdminUsersPanel() {
                             {u.is_verified ? t("healthDb.verified") : "Unverified"}
                           </span>
                         ) : (
-                          <span style={{ color: "var(--ink-faint)", fontSize: 12 }}>—</span>
+                          <span style={{ color: "var(--ink-faint)", fontSize: 12 }}>{translate("—")}</span>
                         )}
                       </td>
                       <td style={{ color: "var(--ink-soft)", fontSize: 12 }}>
-                        {new Date(u.created_at).toLocaleDateString()}
+                        {formatAppDate(u.created_at)}
                       </td>
                       <td>
                         <div className="admin-action-group">
@@ -6127,7 +6139,7 @@ function AdminUsersPanel() {
                               disabled={updating === u.id}
                               title={t("admin.promoteToAdmin")}
                             >
-                              <ShieldCheck size={12} /> Admin
+                              <ShieldCheck size={12} /> {translate("Admin")}
                             </button>
                           )}
                           {u.role === "healthcare_worker" && (
@@ -6186,17 +6198,17 @@ function AdminPatientsPanel() {
 
   function handleDelete(patient) {
     showConfirm({
-      title: "Delete patient?",
-      message: `This will permanently delete ${patient.name || patient.id} along with all their documents and extractions.`,
+      title: translate(translate("Delete patient?")),
+      message: translate("This will permanently delete ") + (patient.name || patient.id) + translate(" along with all their documents and extractions."),
       danger: true,
-      confirmLabel: "Delete Patient",
+      confirmLabel: translate(translate("Delete Patient")),
       onConfirm: async () => {
         try {
           await api.admin.deletePatient(patient.id);
-          toast("Patient deleted");
+          toast(translate(translate("Patient deleted")));
           load();
         } catch (err) {
-          toast("Failed: " + err.message, "error");
+          toast(translate("Failed: ") + err.message, "error");
         }
       },
     });
@@ -6274,7 +6286,7 @@ function AdminPatientsPanel() {
                         </span>
                       </td>
                       <td style={{ fontSize: 12, color: "var(--ink-soft)" }}>
-                        {p.created_at ? new Date(p.created_at).toLocaleDateString() : "—"}
+                        {p.created_at ? formatAppDate(p.created_at) : "—"}
                       </td>
                       <td>
                         <button
@@ -6320,17 +6332,17 @@ function AdminDocumentsPanel() {
 
   function handleDelete(doc) {
     showConfirm({
-      title: "Delete document?",
-      message: `This will permanently delete "${doc.original_filename}" and all extracted data.`,
+      title: translate(translate("Delete document?")),
+      message: translate("This will permanently delete \"") + doc.original_filename + translate("\" and all extracted data."),
       danger: true,
-      confirmLabel: "Delete Document",
+      confirmLabel: translate(translate("Delete Document")),
       onConfirm: async () => {
         try {
           await api.deleteDocument(doc.id);
-          toast("Document deleted");
+          toast(translate(translate("Document deleted")));
           load();
         } catch (err) {
-          toast("Failed: " + err.message, "error");
+          toast(translate("Failed: ") + err.message, "error");
         }
       },
     });
@@ -6347,7 +6359,7 @@ function AdminDocumentsPanel() {
     <div className="admin-panel">
       <div className="admin-panel__header">
         <h3 className="admin-panel__title">
-          <FileText size={15} /> All Documents
+          <FileText size={15} /> {translate("All Documents")}
           <span className="admin-panel__count">{documents.length}</span>
         </h3>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -6377,7 +6389,7 @@ function AdminDocumentsPanel() {
                   <tr>
                     <th>{t("upload.fileName")}</th>
                     <th>{t("docDetail.type")}</th>
-                    <th>{t("role.patient")} ID</th>
+                    <th>{t("role.patient")} {translate("ID")}</th>
                     <th>{t("docDetail.uploaded")}</th>
                     <th>{t("admin.actions")}</th>
                   </tr>
@@ -6391,16 +6403,16 @@ function AdminDocumentsPanel() {
                       </td>
                       <td>
                         {d.document_type ? (
-                          <span className="admin-badge admin-badge--doc">{d.document_type}</span>
+                          <span className="admin-badge admin-badge--doc">{translateDocumentType(d.document_type)}</span>
                         ) : (
-                          <span style={{ color: "var(--ink-faint)", fontSize: 12 }}>—</span>
+                          <span style={{ color: "var(--ink-faint)", fontSize: 12 }}>{translate("—")}</span>
                         )}
                       </td>
                       <td style={{ fontSize: 12, color: "var(--ink-soft)", fontFamily: "monospace" }}>
                         {d.patient_id || "—"}
                       </td>
                       <td style={{ fontSize: 12, color: "var(--ink-soft)" }}>
-                        {d.uploaded_at ? new Date(d.uploaded_at).toLocaleDateString() : "—"}
+                        {d.uploaded_at ? formatAppDate(d.uploaded_at) : "—"}
                       </td>
                       <td>
                         <div className="admin-action-group">
@@ -6410,7 +6422,7 @@ function AdminDocumentsPanel() {
                               try {
                                 await api.downloadDocumentFile(d.id, d.original_filename || "document");
                               } catch (err) {
-                                toast("Download failed: " + err.message, "error");
+                                toast(translate("Download failed: ") + err.message, "error");
                               }
                             }}
                             title={t("dashboard.downloadOriginal")}
@@ -6449,9 +6461,8 @@ function AdminDocumentsPanel() {
 // ---------------------------------------------------------------------------
 
 function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
-  const { t } = useAppLanguage();
+  const { t, language: appLanguage } = useAppLanguage();
   const [query, setQuery] = useState("");
-  const [language, setLanguage] = useState("en");
   const [popularTopics, setPopularTopics] = useState([]);
   const [searchResults, setSearchResults] = useState(null);
   const [loadingPopular, setLoadingPopular] = useState(true);
@@ -6460,9 +6471,33 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
   const [searchSource, setSearchSource] = useState("");
 
   // On-demand article translation state
-  const [targetLang, setTargetLang] = useState(profile?.preferred_language ? getLanguageCode(profile.preferred_language) : "hi");
+  const [targetLang, setTargetLang] = useState(appLanguage || "hi");
   const [translating, setTranslating] = useState(false);
   const [activeTranslatedTopic, setActiveTranslatedTopic] = useState(null);
+
+  useEffect(() => {
+    setTargetLang(appLanguage || "hi");
+    setActiveTranslatedTopic(null);
+  }, [appLanguage]);
+
+  async function translateTopicsForDisplay(topics, targetLanguage = appLanguage) {
+    if (!targetLanguage || targetLanguage === "en") return topics;
+    const translated = [];
+    for (let index = 0; index < topics.length; index += 2) {
+      const batch = topics.slice(index, index + 2);
+      const results = await Promise.all(batch.map(async (topic) => {
+        try {
+          const result = await api.healthDb.translateTopic(topic.id, targetLanguage);
+          return { ...topic, ...result, id: topic.id, sourceTopicId: topic.id, originalTopic: topic.originalTopic || topic };
+        } catch (err) {
+          console.error(`Failed to translate health topic '${topic.title}'`, err);
+          return { ...topic, sourceTopicId: topic.id, originalTopic: topic.originalTopic || topic };
+        }
+      }));
+      translated.push(...results);
+    }
+    return translated;
+  }
 
   // Lock background scroll when modal is open
   useEffect(() => {
@@ -6482,7 +6517,8 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
       setLoadingPopular(true);
       try {
         const topics = await api.healthDb.getPopular("en");
-        if (active) setPopularTopics(topics);
+        const visibleTopics = await translateTopicsForDisplay(topics);
+        if (active) setPopularTopics(visibleTopics);
       } catch (err) {
         console.error("Failed to load popular topics", err);
       } finally {
@@ -6491,7 +6527,17 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
     }
     fetchPopular();
     return () => { active = false; };
-  }, []);
+  }, [appLanguage]);
+
+  useEffect(() => {
+    if (searchResults === null) return;
+    let active = true;
+    const originals = searchResults.map((topic) => topic.originalTopic || topic);
+    translateTopicsForDisplay(originals).then((translated) => {
+      if (active) setSearchResults(translated);
+    });
+    return () => { active = false; };
+  }, [appLanguage]);
 
   async function handleSearch(e) {
     if (e) e.preventDefault();
@@ -6499,10 +6545,10 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
     setSearching(true);
     try {
       const res = await api.healthDb.search(query.trim(), "en");
-      setSearchResults(res.results || []);
+      setSearchResults(await translateTopicsForDisplay(res.results || []));
       setSearchSource(res.source || "");
     } catch (err) {
-      toast("Search error: " + err.message, "error");
+      toast(translate("Search error: ") + err.message, "error");
     } finally {
       setSearching(false);
     }
@@ -6524,28 +6570,37 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
     setSearchSource("");
   }
 
-  async function handleTranslateArticle(topicId, langCode) {
-    if (!topicId) return;
-    setTranslating(true);
-    try {
-      const res = await api.healthDb.translateTopic(topicId, langCode);
-      setActiveTranslatedTopic(res);
-      if (selectedTopic && res.title === selectedTopic.title && res.summary === selectedTopic.summary) {
-        toast("Translation service limit reached. Showing English version.", "error");
-      } else {
-        toast(`Article translated to ${getLanguageName(langCode)}!`);
-      }
-    } catch (err) {
-      toast("Translation error: " + err.message, "error");
-    } finally {
+  useEffect(() => {
+    if (!selectedTopic || !targetLang) return;
+    if (targetLang === "en") {
+      setActiveTranslatedTopic(null);
       setTranslating(false);
+      return;
     }
-  }
+    let active = true;
+    setTranslating(true);
+    api.healthDb.translateTopic(selectedTopic.sourceTopicId || selectedTopic.id, targetLang)
+      .then((res) => {
+        if (active) {
+          setActiveTranslatedTopic(res);
+          if (selectedTopic && res.title === selectedTopic.title && res.summary === selectedTopic.summary) {
+            toast(translate("Translation service limit reached. Showing English version."), "error");
+          } else {
+            toast(translate("Article translated to ") + getLanguageName(targetLang) + translate("!"));
+          }
+        }
+      })
+      .catch((err) => {
+        if (active) toast(translate("Translation error: ") + err.message, "error");
+      })
+      .finally(() => { if (active) setTranslating(false); });
+    return () => { active = false; };
+  }, [selectedTopic, targetLang]);
 
   function getCardSnippet(topic) {
     const raw = topic.snippet || topic.summary || "";
     const clean = raw.replace(/<[^>]+>/g, "").trim();
-    if (!clean) return "Click to read full topic details and guidelines.";
+    if (!clean) return translate("Click to read full topic details and guidelines.");
     if (clean.length <= 110) return clean;
     return clean.slice(0, 108) + "…";
   }
@@ -6582,12 +6637,12 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
             </div>
 
             <button type="submit" className="btn btn--primary" disabled={searching || !query.trim()}>
-              {searching ? <Loader2 size={16} className="spin" /> : "Search Library"}
+              {searching ? <Loader2 size={16} className="spin" /> : translate("Search Library")}
             </button>
           </form>
 
           <div className="health-db-search-hint">
-            <span>💡 Popular searches:</span>
+            <span>{translate("Popular searches:")}</span>
             {["Diabetes", "High Blood Pressure", "Asthma", "Pregnancy", "Anxiety"].map((term) => (
               <button
                 key={term}
@@ -6596,14 +6651,17 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                 onClick={() => {
                   setQuery(term);
                   setSearching(true);
-                  api.healthDb.search(term, "en").then((res) => {
-                    setSearchResults(res.results || []);
+                  api.healthDb.search(term, "en").then(async (res) => {
+                    setSearchResults(await translateTopicsForDisplay(res.results || []));
                     setSearchSource(res.source || "");
+                    setSearching(false);
+                  }).catch((err) => {
+                    toast(translate("Search error: ") + err.message, "error");
                     setSearching(false);
                   });
                 }}
               >
-                {term}
+                {translate(term)}
               </button>
             ))}
           </div>
@@ -6614,14 +6672,14 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
           <div className="health-db-results-section">
             <div className="health-db-results-header">
               <h2 style={{ margin: 0, fontSize: 18 }}>
-                {searchResults.length === 1 ? "Most Relevant Match" : "Top Relevant Matches"} for "{query}"
+                {searchResults.length === 1 ? translate("Most Relevant Match") : translate("Top Relevant Matches")} {translate("for \"")}{query}{translate("\"")}
                 <span className="results-count-badge" style={{ marginLeft: 8, fontSize: 13, fontWeight: 500, color: "var(--ink-soft)" }}>
-                  ({searchResults.length} {searchResults.length === 1 ? "topic" : "topics"})
+                  {translate("(")}{searchResults.length} {searchResults.length === 1 ? translate("topic") : translate("topics")}{translate(")")}
                 </span>
               </h2>
               {searchSource && (
                 <span className="badge badge--teal">
-                  <ShieldCheck size={12} style={{ marginRight: 4 }} /> {searchSource === "cache" ? "Instant Cache" : "MedlinePlus Web Service"}
+                  <ShieldCheck size={12} style={{ marginRight: 4 }} /> {searchSource === "cache" ? translate("Instant Cache") : translate("MedlinePlus Web Service")}
                 </span>
               )}
             </div>
@@ -6629,7 +6687,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
             {searchResults.length === 0 ? (
               <div className="empty-state">
                 <FileText size={36} color="var(--ink-faint)" />
-                <p>No health topics found matching "{query}". Try a different keyword.</p>
+                <p>{translate("No health topics found matching \"")}{query}{translate("\". Try a different keyword.")}</p>
               </div>
             ) : (
               <div className="health-db-grid">
@@ -6639,10 +6697,10 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                       <h3 className="health-topic-title">{topic.title}</h3>
                       {i === 0 ? (
                         <span className="badge badge--teal" style={{ fontSize: 11, padding: "3px 8px", background: "var(--teal)", color: "#ffffff", fontWeight: 700 }}>
-                          🎯 Most Relevant Match
+                          {translate("Most Relevant Match")}
                         </span>
                       ) : (
-                        <span className="badge badge--sage">MedlinePlus</span>
+                        <span className="badge badge--sage">{translate("MedlinePlus")}</span>
                       )}
                     </div>
 
@@ -6659,9 +6717,9 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                     )}
 
                     <div className="health-topic-card__footer">
-                      <span className="topic-org-label">{topic.organization || "National Library of Medicine"}</span>
+                      <span className="topic-org-label">{translate("MedlinePlus / NLM")}</span>
                       <button type="button" className="btn-link" style={{ background: "none", border: "none", color: "var(--teal)", cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 2 }}>
-                        Read Topic <ChevronRight size={14} />
+                        {t("healthDb.readFull")} <ChevronRight size={14} />
                       </button>
                     </div>
                   </div>
@@ -6678,7 +6736,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
               <div>
                 <h2 style={{ margin: 0, fontSize: 18 }}>{t("healthDb.popularTopics")}</h2>
                 <p className="section-sub" style={{ margin: "2px 0 0", color: "var(--ink-soft)", fontSize: 13 }}>
-                  Essential healthcare guidelines curated from MedlinePlus
+                  {translate("Essential healthcare guidelines curated from MedlinePlus")}
                 </p>
               </div>
             </div>
@@ -6710,7 +6768,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                     )}
 
                     <div className="health-topic-card__footer">
-                      <span className="topic-org-label">{t("healthDb.medlinePlus") || "MedlinePlus / NLM"}</span>
+                      <span className="topic-org-label">{translate("MedlinePlus / NLM")}</span>
                       <button type="button" className="btn-link" style={{ background: "none", border: "none", color: "var(--teal)", cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 2 }}>
                         {t("healthDb.readFull")} <ChevronRight size={14} />
                       </button>
@@ -6735,11 +6793,11 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                 <div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
                     <span className="badge badge--teal">
-                      <ShieldCheck size={12} style={{ marginRight: 3 }} /> MedlinePlus Verified
+                      <ShieldCheck size={12} style={{ marginRight: 3 }} /> {translate("MedlinePlus Verified")}
                     </span>
                     {activeTranslatedTopic ? (
                       <span className="badge badge--gold">
-                        Translated ({getLanguageName(activeTranslatedTopic.language)})
+                        {translate("Translated (")}{getLanguageName(activeTranslatedTopic.language)}{translate(")")}
                       </span>
                     ) : (
                       <span className="badge badge--paper">{t("healthDb.englishOriginal")}</span>
@@ -6752,8 +6810,8 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                   type="button"
                   className="modal-close-cross-btn"
                   onClick={handleCloseModal}
-                  title="Close Article (Esc)"
-                  aria-label="Close article"
+                  title={translate("Close Article (Esc)")}
+                  aria-label={translate("Close article")}
                 >
                   <X size={20} />
                 </button>
@@ -6767,6 +6825,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                   <select
                     value={targetLang}
                     onChange={(e) => setTargetLang(e.target.value)}
+                    disabled={translating}
                     style={{ fontSize: 12, padding: "5px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--panel)", color: "var(--ink)" }}
                   >
                     {LANGUAGES.map((l) => (
@@ -6775,27 +6834,22 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                       </option>
                     ))}
                   </select>
+                  {translating && (
+                    <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--teal)", fontWeight: 500 }}>
+                      <Loader2 size={13} className="spin" /> {translate("Translating…")}
+                    </span>
+                  )}
                 </div>
 
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    type="button"
-                    className="btn btn--primary btn--sm"
-                    disabled={translating}
-                    onClick={() => handleTranslateArticle(selectedTopic.id, targetLang)}
-                    style={{ fontSize: 12 }}
-                  >
-                    {translating ? <Loader2 size={13} className="spin" /> : "Translate Article"}
-                  </button>
-
                   {activeTranslatedTopic && (
                     <button
                       type="button"
                       className="btn btn--secondary btn--sm"
-                      onClick={() => setActiveTranslatedTopic(null)}
+                      onClick={() => setTargetLang("en")}
                       style={{ fontSize: 12 }}
                     >
-                      Show Original (English)
+                      {translate("Show Original (English)")}
                     </button>
                   )}
                 </div>
@@ -6805,7 +6859,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
               <div className="health-topic-modal__body" style={{ overflowY: "auto", flex: 1, paddingRight: 4 }}>
                 {displayTopic.summary && (
                   <div className="topic-summary-box" style={{ background: "var(--panel)", padding: 18, border: "1px solid var(--border-soft)", borderRadius: "var(--radius-m)", marginBottom: 16 }}>
-                    <h4 style={{ margin: "0 0 10px", fontSize: 14, color: "var(--teal)", fontWeight: 600 }}>Medical Summary & Guidelines</h4>
+                    <h4 style={{ margin: "0 0 10px", fontSize: 14, color: "var(--teal)", fontWeight: 600 }}>{translate("Medical Summary & Guidelines")}</h4>
                     <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.65, margin: 0, fontSize: 14, color: "var(--ink)" }}>{displayTopic.summary}</p>
                   </div>
                 )}
@@ -6819,7 +6873,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
 
                 {displayTopic.groups && displayTopic.groups.length > 0 && (
                   <div style={{ marginTop: 16, marginBottom: 16 }}>
-                    <h4 style={{ fontSize: 13, color: "var(--ink-soft)", margin: "0 0 6px" }}>Categories & Health Groups</h4>
+                    <h4 style={{ fontSize: 13, color: "var(--ink-soft)", margin: "0 0 6px" }}>{translate("Categories & Health Groups")}</h4>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {displayTopic.groups.map((g, idx) => (
                         <span key={idx} className="topic-group-tag" style={{ fontSize: 12, padding: "4px 10px", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 12 }}>{g}</span>
@@ -6832,7 +6886,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
               {/* Fixed Footer */}
               <div className="topic-modal-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 14, marginTop: 12, borderTop: "1px solid var(--border-soft)" }}>
                 <div className="topic-org-info" style={{ fontSize: 12, color: "var(--ink-soft)" }}>
-                  <strong>{t("healthDb.sourceAuthority")}</strong> {displayTopic.organization || "U.S. National Library of Medicine (MedlinePlus)"}
+                  <strong>{t("healthDb.sourceAuthority")}</strong> {translate("MedlinePlus / NLM")}
                 </div>
                 {selectedTopic.url && (
                   <a
@@ -6842,7 +6896,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
                     className="btn btn--secondary btn--sm"
                     style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }}
                   >
-                    View on MedlinePlus.gov <ExternalLink size={13} />
+                    {translate("View on MedlinePlus.gov")} <ExternalLink size={13} />
                   </a>
                 )}
               </div>
@@ -6910,7 +6964,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
       setReminders(rems);
       setLogs(lg);
     } catch (err) {
-      toast("Error loading reminders: " + err.message, "error");
+      toast(translate("Error loading reminders: ") + err.message, "error");
     } finally {
       setLoading(false);
     }
@@ -6945,11 +6999,11 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
   async function handleCreateReminder(e) {
     e.preventDefault();
     if (!medicineName.trim()) {
-      toast("Please enter medicine name", "error");
+      toast(translate(translate("Please enter medicine name")), "error");
       return;
     }
     if (isWorker && !selectedPatient) {
-      toast("Please select a patient first", "error");
+      toast(translate(translate("Please select a patient first")), "error");
       return;
     }
     const times = [time1];
@@ -6975,14 +7029,14 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
         } : {}),
       });
       toast(isWorker && selectedPatient
-        ? `Reminder created for ${selectedPatient.name}!`
-        : "Medication reminder created successfully!");
+        ? translate("Reminder created for ") + selectedPatient.name + translate("!")
+        : translate("Medication reminder created successfully!"));
       setShowModal(false);
       setMedicineName("");
       setDosage("");
       loadData();
     } catch (err) {
-      toast("Failed to create reminder: " + err.message, "error");
+      toast(translate("Failed to create reminder: ") + err.message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -6991,36 +7045,36 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
   async function handleMarkTaken(logId) {
     try {
       await api.reminders.markTaken(logId);
-      toast("Medication marked as TAKEN! Great job staying on schedule.");
+      toast(translate(translate("Medication marked as TAKEN! Great job staying on schedule.")));
       loadData();
     } catch (err) {
-      toast("Failed to update status: " + err.message, "error");
+      toast(translate("Failed to update status: ") + err.message, "error");
     }
   }
 
   async function handleSnooze(logId) {
     try {
       await api.reminders.snooze(logId, 15);
-      toast("Reminder snoozed for 15 minutes.");
+      toast(translate(translate("Reminder snoozed for 15 minutes.")));
       loadData();
     } catch (err) {
-      toast("Failed to snooze: " + err.message, "error");
+      toast(translate("Failed to snooze: ") + err.message, "error");
     }
   }
 
   async function handleDeleteReminder(reminderId) {
     showConfirm({
-      title: "Delete Reminder Schedule?",
-      message: "This will remove the schedule and stop SMS notifications. Are you sure?",
+      title: translate(translate("Delete Reminder Schedule?")),
+      message: translate(translate("This will remove the schedule and stop SMS notifications. Are you sure?")),
       danger: true,
-      confirmLabel: "Delete Schedule",
+      confirmLabel: translate(translate("Delete Schedule")),
       onConfirm: async () => {
         try {
           await api.reminders.delete(reminderId);
-          toast("Reminder schedule deleted.");
+          toast(translate(translate("Reminder schedule deleted.")));
           loadData();
         } catch (err) {
-          toast("Failed to delete: " + err.message, "error");
+          toast(translate("Failed to delete: ") + err.message, "error");
         }
       },
     });
@@ -7067,10 +7121,10 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
               </div>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>
-                  Select Patient
+                  {translate("Select Patient")}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>
-                  Choose a patient to view or add medication reminders on their behalf
+                  {translate("Choose a patient to view or add medication reminders on their behalf")}
                 </div>
               </div>
             </div>
@@ -7080,7 +7134,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
               <Search size={15} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-soft)" }} />
               <input
                 type="text"
-                placeholder="Search patients by name or ID…"
+                placeholder={translate("Search patients by name or ID…")}
                 value={patientSearch}
                 onChange={(e) => setPatientSearch(e.target.value)}
                 style={{
@@ -7094,11 +7148,11 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
             {/* Patient chips */}
             {patientsLoading ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--ink-soft)", fontSize: 13 }}>
-                <Loader2 size={15} className="spin" /> Loading patients…
+                <Loader2 size={15} className="spin" /> {translate("Loading patients…")}
               </div>
             ) : patients.length === 0 ? (
               <p style={{ color: "var(--ink-soft)", fontSize: 13, margin: 0 }}>
-                No patients found. Register a patient first.
+                {translate("No patients found. Register a patient first.")}
               </p>
             ) : (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, maxHeight: 160, overflowY: "auto" }}>
@@ -7115,7 +7169,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                     display: "flex", alignItems: "center", gap: 5,
                   }}
                 >
-                  <Users size={12} /> All Patients
+                  <Users size={12} /> {translate("All Patients")}
                 </button>
 
                 {filteredPatients.map((pt) => (
@@ -7145,10 +7199,10 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                 fontSize: 13, color: "var(--teal)", display: "flex", alignItems: "center", gap: 8,
               }}>
                 <UserCheck size={15} />
-                Viewing reminders for <strong>{selectedPatient.name || selectedPatient.id}</strong>
+                {translate("Viewing reminders for")} <strong>{selectedPatient.name || selectedPatient.id}</strong>
                 {selectedPatient.phone_number && (
                   <span style={{ color: "var(--ink-soft)", fontWeight: 400 }}>
-                    &nbsp;· 📱 {selectedPatient.phone_number}
+                     {translate("· 📱")} {selectedPatient.phone_number}
                   </span>
                 )}
               </div>
@@ -7206,19 +7260,19 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
               {t("reminders.todaySchedule")}
               {isWorker && selectedPatient && (
                 <span style={{ fontSize: 14, fontWeight: 500, color: "var(--teal)", marginLeft: 10 }}>
-                  — {selectedPatient.name}
+                  {translate("—")} {selectedPatient.name}
                 </span>
               )}
             </h2>
             <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: "4px 0 0" }}>
-              {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              {formatAppDate(Date.now(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           </div>
           <button
             className="btn btn--primary"
             onClick={() => {
               if (isWorker && !selectedPatient) {
-                toast("Please select a patient first to schedule a reminder", "error");
+                toast(translate(translate("Please select a patient first to schedule a reminder")), "error");
                 return;
               }
               setShowModal(true);
@@ -7227,7 +7281,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
             <Plus size={16} /> {t("reminders.scheduleBtn")}
             {isWorker && selectedPatient && (
               <span style={{ marginLeft: 6, opacity: 0.85, fontSize: 12 }}>
-                for {selectedPatient.name}
+                {translate("for")} {selectedPatient.name}
               </span>
             )}
           </button>
@@ -7252,7 +7306,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
             </p>
             <button className="btn btn--secondary" onClick={() => {
               if (isWorker && !selectedPatient) {
-                toast("Please select a patient first", "error");
+                toast(translate(translate("Please select a patient first")), "error");
                 return;
               }
               setShowModal(true);
@@ -7277,7 +7331,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                   }
                 }
                 if (!timeFmt) {
-                  timeFmt = new Date(log.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  timeFmt = formatAppTime(log.scheduled_time, { hour: '2-digit', minute: '2-digit' });
                 }
               }
               return (
@@ -7327,7 +7381,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     {log.status === "taken" ? (
                       <span className="badge badge--teal" style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
-                        <CheckCircle2 size={14} /> {t("reminders.taken")} {log.action_time ? new Date(log.action_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                        <CheckCircle2 size={14} /> {t("reminders.taken")} {log.action_time ? formatAppTime(log.action_time, { hour: '2-digit', minute: '2-digit' }) : ""}
                       </span>
                     ) : log.status === "missed" ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -7336,7 +7390,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                         </span>
                         {log.notified_caregiver === 1 && (
                           <span style={{ fontSize: 11, color: "var(--brick)", fontWeight: 500 }}>
-                            📢 Caregiver Notified
+                            {translate("📢 Caregiver Notified")}
                           </span>
                         )}
                         <button className="btn btn--secondary btn--sm" onClick={() => handleMarkTaken(log.id)} style={{ fontSize: 12 }}>
@@ -7384,29 +7438,29 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                     )}
 
                     <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: "0 0 12px" }}>
-                      {t("reminders.dosage")}: <strong>{rem.dosage || t("reminders.scheduled")}</strong>
+                      {t("reminders.dosage")}{translate(":")} <strong>{rem.dosage || t("reminders.scheduled")}</strong>
                     </p>
 
                     <div style={{ fontSize: 12, color: "var(--ink)", background: "var(--bg-subtle)", padding: "8px 12px", borderRadius: 8, marginBottom: 12 }}>
-                      ⏰ Scheduled Times: <strong>{Array.isArray(rem.times) ? rem.times.join(", ") : rem.times}</strong>
+                      {translate("⏰ Scheduled Times:")} <strong>{Array.isArray(rem.times) ? rem.times.join(", ") : rem.times}</strong>
                     </div>
 
                     {rem.patient_phone && (
                       <div style={{ fontSize: 12, color: "var(--ink-soft)", marginBottom: 4 }}>
-                        📱 Patient Phone: {rem.patient_phone}
+                        {translate("📱 Patient Phone:")} {rem.patient_phone}
                       </div>
                     )}
 
                     {rem.caregiver_phone && (
                       <div style={{ fontSize: 12, color: "var(--ink-soft)", marginBottom: 4 }}>
-                        🚨 Caregiver: <strong>{rem.caregiver_name || "Assigned"}</strong> ({rem.caregiver_phone})
+                        {translate("🚨 Caregiver:")} <strong>{rem.caregiver_name || "Assigned"}</strong> {translate("(")}{rem.caregiver_phone}{translate(")")}
                       </div>
                     )}
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border-soft)" }}>
                     <button className="btn btn--secondary btn--sm" onClick={() => handleDeleteReminder(rem.id)} style={{ color: "var(--brick)", fontSize: 12 }}>
-                      <Trash2 size={13} /> Remove Schedule
+                      <Trash2 size={13} /> {translate("Remove Schedule")}
                     </button>
                   </div>
                 </div>
@@ -7436,19 +7490,19 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                   fontSize: 13, color: "var(--teal)", display: "flex", alignItems: "center", gap: 8,
                 }}>
                   <User size={15} />
-                  Scheduling reminder for <strong>{selectedPatient.name}</strong>
+                  {translate("Scheduling reminder for")} <strong>{selectedPatient.name}</strong>
                 </div>
               )}
 
               <form onSubmit={handleCreateReminder} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>{t("reminders.medicineName")} *</label>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>{t("reminders.medicineName")} {translate("*")}</label>
                   <input
                     type="text"
                     required
                     value={medicineName}
                     onChange={(e) => setMedicineName(e.target.value)}
-                    placeholder="e.g. Paracetamol, Metformin"
+                    placeholder={translate("e.g. Paracetamol, Metformin")}
                     style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--ink)" }}
                   />
                 </div>
@@ -7459,14 +7513,14 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                     type="text"
                     value={dosage}
                     onChange={(e) => setDosage(e.target.value)}
-                    placeholder="e.g. 500mg after meal"
+                    placeholder={translate("e.g. 500mg after meal")}
                     style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--ink)" }}
                   />
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>{t("reminders.times")} 1 *</label>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>{t("reminders.times")} {translate("1 *")}</label>
                     <input
                       type="time"
                       required
@@ -7477,7 +7531,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>{t("reminders.times")} 2</label>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>{t("reminders.times")} {translate("2")}</label>
                     {useSecondTime ? (
                       <input
                         type="time"
@@ -7487,7 +7541,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                       />
                     ) : (
                       <button type="button" className="btn btn--secondary" onClick={() => setUseSecondTime(true)} style={{ width: "100%", fontSize: 12, height: 42 }}>
-                        + Add 2nd Time
+                        {translate("+ Add 2nd Time")}
                       </button>
                     )}
                   </div>
@@ -7495,20 +7549,20 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Frequency</label>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>{translate("Frequency")}</label>
                     <select
                       value={frequency}
                       onChange={(e) => setFrequency(e.target.value)}
                       style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--ink)" }}
                     >
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="as_needed">As Needed</option>
+                      <option value="daily">{translate("Daily")}</option>
+                      <option value="weekly">{translate("Weekly")}</option>
+                      <option value="as_needed">{translate("As Needed")}</option>
                     </select>
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Start Date</label>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>{translate("Start Date")}</label>
                     <input
                       type="date"
                       value={startDate}
@@ -7520,7 +7574,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
 
                 <div style={{ background: "var(--bg-subtle)", padding: 14, borderRadius: 10, border: "1px solid var(--border-soft)", marginTop: 4 }}>
                   <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "var(--teal)", display: "flex", alignItems: "center", gap: 6 }}>
-                    <Phone size={14} /> Twilio SMS &amp; Caregiver Notification Setup
+                    <Phone size={14} /> {translate("Twilio SMS & Caregiver Notification Setup")}
                   </h4>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
@@ -7529,7 +7583,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                         type="tel"
                         value={patientPhone}
                         onChange={(e) => setPatientPhone(e.target.value)}
-                        placeholder="+15005550006"
+                        placeholder={translate("+15005550006")}
                         style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 12, background: "var(--panel)", color: "var(--ink)" }}
                       />
                     </div>
@@ -7539,7 +7593,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                         type="text"
                         value={caregiverName}
                         onChange={(e) => setCaregiverName(e.target.value)}
-                        placeholder="e.g. Son / Doctor"
+                        placeholder={translate("e.g. Son / Doctor")}
                         style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 12, background: "var(--panel)", color: "var(--ink)" }}
                       />
                     </div>
@@ -7551,7 +7605,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
                       type="tel"
                       value={caregiverPhone}
                       onChange={(e) => setCaregiverPhone(e.target.value)}
-                      placeholder="+15005550006"
+                      placeholder={translate("+15005550006")}
                       style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 12, background: "var(--panel)", color: "var(--ink)" }}
                     />
                   </div>
@@ -7602,6 +7656,8 @@ export default function App() {
   useEffect(() => {
     document.documentElement.lang = appLanguage;
     document.documentElement.dir = appLanguage === "ur" ? "rtl" : "ltr";
+    document.title = translate("Sehat Saathi - Multilingual AI Healthcare Engine", appLanguage);
+    document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", translate("Sehat Saathi", appLanguage));
   }, [appLanguage]);
 
   function changeAppLanguage(newLang) {
