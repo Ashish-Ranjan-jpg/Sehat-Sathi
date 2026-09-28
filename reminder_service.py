@@ -3,8 +3,14 @@ reminder_service.py
 
 Medication Reminder System & Caregiver Alert Service.
 - Manages medication reminder schedules and daily dose logs.
-- Dispatches SMS/WhatsApp notifications via Twilio (with fallback simulation).
+- Dispatches WhatsApp notifications via Twilio (with fallback simulation).
 - Monitors missed doses (15-min grace period) and automatically alerts Caregivers.
+
+.env variables used:
+    TWILIO_ACCOUNT_SID
+    TWILIO_AUTH_TOKEN
+    TWILIO_WHATSAPP_FROM   e.g. whatsapp:+17372508034 (your sandbox number)
+    TWILIO_CONTENT_SID     e.g. HXfe5ab5f00277942d4d4200328b4d403c (pre-approved template)
 """
 
 import os
@@ -135,15 +141,22 @@ def _to_whatsapp(phone: str) -> str:
 def _send_twilio_sms(to_phone, body_text):
     """
     Send a WhatsApp message via Twilio WhatsApp Sandbox.
-    If Twilio credentials are missing in .env or target is a dummy number (e.g. 123456789),
-    fallback to clean console simulation.
+
+    - If TWILIO_CONTENT_SID is set, the message is sent as that pre-approved
+      template (the sandbox rejects plain-body sends with error 21654).
+      The text the recipient sees is the template's fixed text, NOT body_text.
+    - If it is not set, a plain body message is attempted (only works inside
+      WhatsApp's 24-hour customer service window).
+    - If Twilio credentials are missing or the number is a dummy, falls back
+      to console simulation.
 
     SETUP: Recipients must first opt-in to the sandbox by sending
-    'join <sandbox-keyword>' to whatsapp:+14155238886 on WhatsApp.
+    'join <sandbox-keyword>' to your sandbox number on WhatsApp.
     """
     account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
     auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
     from_phone = os.environ.get("TWILIO_WHATSAPP_FROM", "whatsapp:+17372508034")
+    content_sid = os.environ.get("TWILIO_CONTENT_SID")
 
     raw_phone = (to_phone or "").strip()
     is_valid_number = _is_valid_e164_phone(raw_phone)
@@ -155,30 +168,32 @@ def _send_twilio_sms(to_phone, body_text):
             from twilio.rest import Client
             from twilio.base.exceptions import TwilioRestException
             client = Client(account_sid, auth_token)
-            message = client.messages.create(
-                body=body_text,
-                from_=from_phone,
-                to=to_whatsapp
-            )
+
+            if content_sid:
+                message = client.messages.create(
+                    from_=from_phone,
+                    to=to_whatsapp,
+                    content_sid=content_sid,
+                )
+            else:
+                message = client.messages.create(
+                    body=body_text,
+                    from_=from_phone,
+                    to=to_whatsapp,
+                )
             print(f"[TWILIO WHATSAPP SUCCESS] Sent to {to_whatsapp} (SID: {message.sid})")
             return True
         except TwilioRestException as e:
-            code = e.code
-            if code == 21654:
-                print(
-                    f"[TWILIO WHATSAPP] Recipient {to_whatsapp} has NOT joined the sandbox.\n"
-                    f"  ACTION: Ask them to send 'join <sandbox-keyword>' to WhatsApp +17372508034.\n"
-                    f"  Find your keyword at: https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn"
-                )
-            elif code == 21408:
-                print(
-                    f"[TWILIO WHATSAPP] Geographic permissions not enabled for {to_whatsapp}.\n"
-                    f"  ACTION: Enable the country in Twilio Console -> Messaging -> Geo-permissions."
-                )
-            elif code in (21211, 21614, 21606):
-                print(f"[TWILIO WHATSAPP] Invalid or dummy phone number: {to_whatsapp} - falling back to simulation")
-            else:
-                print(f"[TWILIO WHATSAPP ERROR] Failed to send to {to_whatsapp} (Code {code}): {e.msg}")
+            print(
+                f"[TWILIO WHATSAPP ERROR] to={to_whatsapp} from={from_phone} "
+                f"status={e.status} code={e.code} msg={e.msg}"
+            )
+            if e.code == 63015:
+                print("  HINT: recipient has not joined the sandbox - send 'join <keyword>' from their WhatsApp.")
+            elif e.code == 63016:
+                print("  HINT: outside the 24-hour window - set TWILIO_CONTENT_SID to send a template.")
+            elif e.code == 21654:
+                print("  HINT: sandbox needs a template - set TWILIO_CONTENT_SID in .env.")
             return False
         except Exception as e:
             print(f"[TWILIO WHATSAPP ERROR] Unexpected error sending to {to_whatsapp}: {e}")
@@ -515,7 +530,7 @@ def _run_reminder_daemon_tick():
     """
     Single tick of the background daemon:
     1. Pre-generate today's dose logs for active reminders.
-    2. Dispatch patient SMS reminders for due doses.
+    2. Dispatch patient WhatsApp reminders for due doses.
     3. Identify missed doses (>15 min overdue) and dispatch Caregiver alerts.
     """
     now_local = datetime.now()
@@ -534,7 +549,7 @@ def _run_reminder_daemon_tick():
             rem["id"], rem["user_id"], rem["medicine_name"], rem.get("dosage", ""), times
         )
 
-    # 2. Check scheduled doses and send Patient SMS
+    # 2. Check scheduled doses and send Patient WhatsApp reminder
     pending_logs = db_engine.fetchall(
         "SELECT * FROM medication_logs WHERE status IN ('scheduled', 'snoozed') AND notified_patient = 0"
     )
@@ -544,7 +559,7 @@ def _run_reminder_daemon_tick():
             sched_str = log["scheduled_time"].replace("Z", "")
             sched_dt = datetime.fromisoformat(sched_str)
 
-            # Send SMS if due within 2 minutes or overdue
+            # Send reminder if due within 2 minutes or overdue
             if now_local >= sched_dt - timedelta(minutes=2):
                 rem = db_engine.fetchone("SELECT * FROM medication_reminders WHERE id = ?", (log["reminder_id"],))
                 patient_phone = rem.get("patient_phone") if rem else None

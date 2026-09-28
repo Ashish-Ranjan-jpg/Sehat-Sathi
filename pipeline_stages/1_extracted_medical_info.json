@@ -1,87 +1,11 @@
 {
-  "document_type": "lab_report",
-  "summary": "This laboratory report presents a complete blood count for a female patient, showing low hemoglobin, hematocrit, and RBC count, macrocytosis with elevated MCV and MCH, a normal platelet count, and an elevated ESR.",
+  "document_type": "medical_report",
+  "summary": "Radiology report describing spleen, kidneys, bladder, and prostate findings, noting possible kidney stones and prostate enlargement.",
   "medications": [],
-  "lab_results": [
-    {
-      "test_name": "Hemoglobin",
-      "result": "10.9 g/dL",
-      "reference_range": "12.5 - 18.0 g/dL",
-      "status": "Low"
-    },
-    {
-      "test_name": "Total RBC Count",
-      "result": "2.91 x10^6/µL",
-      "reference_range": "35 - 55 x10^6/µL",
-      "status": "Low"
-    },
-    {
-      "test_name": "Hematocrit (PCV)",
-      "result": "32.4 %",
-      "reference_range": "35 - 50 %",
-      "status": "Low"
-    },
-    {
-      "test_name": "MCV",
-      "result": "111.2 fL",
-      "reference_range": "80.0 - 97.0 fL",
-      "status": "High"
-    },
-    {
-      "test_name": "MCH",
-      "result": "37.4 pg",
-      "reference_range": "26.0 - 33.0 pg",
-      "status": "High"
-    },
-    {
-      "test_name": "MCHC",
-      "result": "33.7 g/dL",
-      "reference_range": "31.0 - 40.0 g/dL",
-      "status": "Normal"
-    },
-    {
-      "test_name": "Total WBC",
-      "result": "5,900 /µL",
-      "reference_range": "4,000 - 11,000 /µL",
-      "status": "Normal"
-    },
-    {
-      "test_name": "Polymorphonuclear Neutrophils",
-      "result": "48 %",
-      "reference_range": "40 - 70 %",
-      "status": "Normal"
-    },
-    {
-      "test_name": "Lymphocytes",
-      "result": "46 %",
-      "reference_range": "15 - 40 %",
-      "status": "High"
-    },
-    {
-      "test_name": "Eosinophils",
-      "result": "5 %",
-      "reference_range": "0 - 6 %",
-      "status": "Normal"
-    },
-    {
-      "test_name": "Monocytes",
-      "result": "10 %",
-      "reference_range": "0 - 20 %",
-      "status": "Normal"
-    },
-    {
-      "test_name": "Platelet Count",
-      "result": "1,564 /µL",
-      "reference_range": "150 - 400 /µL",
-      "status": "High"
-    },
-    {
-      "test_name": "ESR",
-      "result": "25 mm/h",
-      "reference_range": "3 - 15 mm/h",
-      "status": "High"
-    }
+  "lab_results": [],
+  "diagnoses": [
+    "Kidney stones",
+    "Prostate enlargement"
   ],
-  "diagnoses": [],
   "doctor_notes": []
 }

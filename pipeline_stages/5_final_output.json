@@ -1,91 +1,15 @@
 {
-  "document_type": "lab_report",
-  "raw_text": "VAMSI CH EST & CH}\n\nLDRENS HOSPITAL\n\nSEX: FEMALE\n\nJRAWN + 26/08/2026\n\nREFERRING DOCTOR: T.V.GOPINATH MD\n\nHRI SARATHDIAOSTIOS.\n\nRECEIVED 1 26/08/2026\n\nREPORTED ¢ 26/08/2026\n\n: COMP! AN\nTEST\nRESULT BIOLOGICAL REFERENCE RANGE\nHEAMOGLOBIN\n10.9 12.5 - 18.0\nTOTAL R.B.C.COUNT\n2.91 35-55\nHAEMATOCRIT (PCV) 32.4 35-50\nMCV.MCH.MCHE\nMEAN CORPUSCULAR VOLUME 111.2 80.0 - 97.0\nMEAN CORPUSCULAR HEAMOGLOBIN 37.4 26.0 - 33.0\nMEAN CORPUSCULAR HEAMOGLOBIN CONC 33.7 31.0 - 40.0\n\n4,000-11,000\n\nTOTAL W. 5,900\n\nWBC DIFFERENTIAL COUNT\n\nPOLYMORPH 48 40-70\n—\n\nLYMPHOCYTES 46 15-40\n\n=\nEOSINOPHILS 05 00 ~ 06\nMONOCYTES o1 00 204\n\nPLATELET COUNT 1,564.0\n\nRYTH 25\n\n14 03-15\n\nE.S.R,\n\nR.Srinivasu OMLT\nMedical Lab Technologist\n\nUNITS\na/dt\nmil/ul\n\n%\n\nPo\n\ng/dl\n\ncelis/cumm\n\nte\nad\n\n%e\n\nLaks/ul\n\nmm/h\n\nLab Incharge\n\nee",
-  "summary": "This laboratory report presents a complete blood count for a female patient, showing low hemoglobin, hematocrit, and RBC count, macrocytosis with elevated MCV and MCH, a normal platelet count, and an elevated ESR.",
+  "document_type": "medical_report",
+  "raw_text": "ead\n\nbd Spleen:\n\nba\n\n“\n\nig Bight kidney: ne Kanan @ io aige . eaiked echospoiiy\n\nry ‘ a\n\n‘ haftkidney 9: 1 2&beo o Seve ero F_ M0 epema® calcul\nRod row\n\nol\nWena Blades Dy pintty, Aisherdat rlow cis 19 @ tages\n| Prostate eran, @) 6x99 in ae\nIMPRESSION; ,\nSh Medical opnal Cucare\n\nGrace IL\natlap\n\nPresa comeioie cline aly.\n\ngn nyo 7071 195879\n\nDv G- Homa -\nseo\"\n\n4 Realy",
+  "summary": "Radiology report describing spleen, kidneys, bladder, and prostate findings, noting possible kidney stones and prostate enlargement.",
   "medications": [],
-  "lab_results": [
-    {
-      "test_name": "Hemoglobin",
-      "result": "10.9 g/dL",
-      "reference_range": "12.5 - 18.0 g/dL",
-      "status": "Low"
-    },
-    {
-      "test_name": "Total RBC Count",
-      "result": "2.91 x10^6/µL",
-      "reference_range": "35 - 55 x10^6/µL",
-      "status": "Low"
-    },
-    {
-      "test_name": "Hematocrit (PCV)",
-      "result": "32.4 %",
-      "reference_range": "35 - 50 %",
-      "status": "Low"
-    },
-    {
-      "test_name": "MCV",
-      "result": "111.2 fL",
-      "reference_range": "80.0 - 97.0 fL",
-      "status": "High"
-    },
-    {
-      "test_name": "MCH",
-      "result": "37.4 pg",
-      "reference_range": "26.0 - 33.0 pg",
-      "status": "High"
-    },
-    {
-      "test_name": "MCHC",
-      "result": "33.7 g/dL",
-      "reference_range": "31.0 - 40.0 g/dL",
-      "status": "Normal"
-    },
-    {
-      "test_name": "Total WBC",
-      "result": "5,900 /µL",
-      "reference_range": "4,000 - 11,000 /µL",
-      "status": "Normal"
-    },
-    {
-      "test_name": "Polymorphonuclear Neutrophils",
-      "result": "48 %",
-      "reference_range": "40 - 70 %",
-      "status": "Normal"
-    },
-    {
-      "test_name": "Lymphocytes",
-      "result": "46 %",
-      "reference_range": "15 - 40 %",
-      "status": "High"
-    },
-    {
-      "test_name": "Eosinophils",
-      "result": "5 %",
-      "reference_range": "0 - 6 %",
-      "status": "Normal"
-    },
-    {
-      "test_name": "Monocytes",
-      "result": "10 %",
-      "reference_range": "0 - 20 %",
-      "status": "Normal"
-    },
-    {
-      "test_name": "Platelet Count",
-      "result": "1,564 /µL",
-      "reference_range": "150 - 400 /µL",
-      "status": "High"
-    },
-    {
-      "test_name": "ESR",
-      "result": "25 mm/h",
-      "reference_range": "3 - 15 mm/h",
-      "status": "High"
-    }
+  "lab_results": [],
+  "diagnoses": [
+    "Kidney stones",
+    "Prostate enlargement"
   ],
-  "diagnoses": [],
   "doctor_notes": [],
-  "simplified_explanation": "Your blood test results show that you have anemia, which means your blood has less oxygen-carrying capacity than normal because your hemoglobin is 10.9 g/dL (normal is 12.5 to 18.0), your red blood cell count is 2.91 million per microliter (normal is 35 to 55 million), and your hematocrit is 32.4% (normal is 35 to 50%). The red blood cells that are present are larger than usual, with an average size (MCV) of 111.2 femtoliters (normal is 80.0 to 97.0) and an average hemoglobin content (MCH) of 37.4 picograms (normal is 26.0 to 33.0), while the concentration of hemoglobin within those cells (MCHC) is normal at 33.7 g/dL (normal is 31.0 to 40.0). Your white blood cell count is normal at 5,900 per microliter (normal is 4,000 to 11,000), with a normal percentage of neutrophils at 48% (normal is 40 to 70), a slightly high percentage of lymphocytes at 46% (normal is 15 to 40), and normal percentages of eosinophils at 5% (normal is 0 to 6) and monocytes at 10% (normal is 0 to 20). Your platelet count is high at 1,564 per microliter (normal is 150 to 400), and your ESR, which measures inflammation in the body, is elevated at 25 mm/h (normal is 3 to 15).",
-  "translated_explanation": "आपके रक्त परीक्षण के परिणाम बताते हैं कि आपको एनीमिया है, जिसका अर्थ है कि आपके रक्त में सामान्य से कम ऑक्सीजन-वाहक क्षमता है क्योंकि आपका हीमोग्लोबिन 10.9 g/dL है (सामान्य 12.5 से 18.0), लाल रक्त कोशिकाओं की संख्या 2.91 मिलियन प्रति माइक्रोलिटर है (सामान्य 35 से 55 मिलियन), और आपका हेमाटोक्रिट 32.4 % है (सामान्य 35 से 50 %)। उपस्थित लाल रक्त कोशिकाएँ सामान्य से बड़ी हैं, जिनका औसत आकार (MCV) 111.2 फेम्टोलिटर है (सामान्य 80.0 से 97.0) और औसत हीमोग्लोबिन सामग्री (MCH) 37.4 पिकोग्राम है (सामान्य 26.0 से 33.0), जबकि उन कोशिकाओं के भीतर हीमोग्लोबिन का सांद्रण (MCHC) सामान्य है 33.7 g/dL (सामान्य 31.0 से 40.0)। आपका श्वेत रक्त कोशिका गणना सामान्य है 5,900 प्रति माइक्रोलिटर (सामान्य 4,000 से 11,000), जिसमें न्यूट्रोफिल्स का प्रतिशत सामान्य 48 % है (सामान्य 40 से 70), लिम्फोसाइट्स का प्रतिशत थोड़ा अधिक 46 % है (सामान्य 15 से 40), और ईओसिनोफिल्स का प्रतिशत सामान्य 5 % है (सामान्य 0 से 6) तथा मोनोसाइट्स का प्रतिशत सामान्य 10 % है (सामान्य 0 से 20)। आपका प्लेटलेट गणना उच्च है 1,564 प्रति माइक्रोलिटर (सामान्य 150 से 400), और आपका ESR, जो शरीर में सूजन को मापता है, 25 mm/h पर बढ़ा हुआ है (सामान्य 3 से 15)।",
+  "simplified_explanation": "This radiology report looks at your spleen, kidneys, bladder, and prostate. It found that you may have kidney stones and that your prostate is enlarged.",
+  "translated_explanation": "यह रेडियोलॉजी रिपोर्ट आपकी प्लीहा, किडनी, मूत्राशय और प्रोस्टेट की जांच करती है। इसमें पाया गया कि आपको किडनी स्टोन हो सकते हैं और आपका प्रोस्टेट बढ़ा हुआ है।",
   "language": "hi"
 }
