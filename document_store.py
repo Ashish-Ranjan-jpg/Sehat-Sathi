@@ -348,22 +348,42 @@ def get_extraction_by_document_id(document_id):
 
 def _extraction_row_to_dict(row):
     record = dict(row)
-    raw_meds = record.get("processed_data")
-    if isinstance(raw_meds, str):
+    raw_data = record.get("processed_data")
+    if isinstance(raw_data, str):
         try:
-            meds = json.loads(raw_meds)
+            parsed = json.loads(raw_data)
         except Exception:
-            meds = []
-    elif isinstance(raw_meds, list):
-        meds = raw_meds
+            parsed = []
+    else:
+        parsed = raw_data or []
+
+    if isinstance(parsed, dict):
+        meds = parsed.get("medications", [])
+        record["lab_results"] = parsed.get("lab_results", [])
+        record["diagnoses"] = parsed.get("diagnoses", [])
+        record["doctor_notes"] = parsed.get("doctor_notes", [])
+        record["summary"] = parsed.get("summary", "")
+        record["processed_data"] = parsed
+    elif isinstance(parsed, list):
+        meds = parsed
+        record["lab_results"] = []
+        record["diagnoses"] = []
+        record["doctor_notes"] = []
+        record["summary"] = ""
+        record["processed_data"] = meds
     else:
         meds = []
+        record["lab_results"] = []
+        record["diagnoses"] = []
+        record["doctor_notes"] = []
+        record["summary"] = ""
+        record["processed_data"] = []
 
-    record["processed_data"] = meds
     record["medications"] = meds
     record["simplified_explanation"] = record.get("simplified_text")
     record["translated_explanation"] = record.get("translated_text")
     return record
+
 
 
 # --------------------------------------------------------------------------

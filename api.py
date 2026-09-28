@@ -319,7 +319,7 @@ async def upload_document(
             patient_id=resolved_patient_id,
             document_type=result["document_type"],
             raw_text=result["raw_text"],
-            processed_data=result["medications"],
+            processed_data=result,
             simplified_text=result["simplified_explanation"],
             translated_text=result["translated_explanation"],
             language=result["language"],

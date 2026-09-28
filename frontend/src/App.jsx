@@ -2603,13 +2603,23 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
 function buildTTSScript(extraction) {
   const parts = [];
 
+  if (extraction.summary) {
+    parts.push("Document summary. " + extraction.summary);
+  }
+
   if (extraction.simplified_explanation) {
-    parts.push("Here is your document summary. " + extraction.simplified_explanation);
+    parts.push("Simplified explanation. " + extraction.simplified_explanation);
   }
 
   if (extraction.translated_explanation) {
     const langName = getLanguageName(extraction.language);
     parts.push(`Translated in ${langName}. ` + extraction.translated_explanation);
+  }
+
+  const labResults = extraction.lab_results || [];
+  if (labResults.length > 0) {
+    const labLines = labResults.map((l, i) => `${i + 1}. ${l.test_name}: ${l.result} ${l.reference_range ? 'reference ' + l.reference_range : ''}`);
+    parts.push("Lab results. " + labLines.join(" "));
   }
 
   const medications = extraction.medications || [];
@@ -3428,6 +3438,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
 
   const extraction = docRecord?.extraction || {};
   const medications = extraction.medications || [];
+  const labResults = extraction.lab_results || [];
   const { currentPage: medPage, setCurrentPage: setMedPage, paginatedItems: paginatedMedications } = usePagination(medications, 5);
 
   return (
@@ -3467,6 +3478,54 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
           <div className="doc-detail-main">
             {/* TTS Player */}
             <TTSPlayer extraction={extraction} />
+
+            {/* EXTRACTED LAB & DIAGNOSTIC RESULTS SECTION */}
+            {labResults.length > 0 && (
+              <div className="section" style={{ marginTop: 24 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, fontSize: 18, color: "var(--ink)" }}>
+                    <Activity size={20} color="var(--blue)" /> Lab & Diagnostic Results ({labResults.length})
+                  </h2>
+                  <span className="badge badge--teal" style={{ fontSize: 11 }}>Structured Extraction</span>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {labResults.map((lab, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        background: "var(--panel)",
+                        border: "1px solid var(--border-soft)",
+                        borderRadius: 12,
+                        padding: "14px 16px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 12,
+                      }}
+                    >
+                      <div>
+                        <span style={{ fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>{lab.test_name}</span>
+                        {lab.reference_range && (
+                          <span style={{ fontSize: 12, color: "var(--ink-soft)", marginLeft: 10 }}>
+                            Reference: {lab.reference_range}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontWeight: 700, fontSize: 16, color: "var(--teal)" }}>{lab.result}</span>
+                        {lab.status && (
+                          <span className={`badge ${lab.status.toLowerCase().includes('abnormal') || lab.status.toLowerCase().includes('low') || lab.status.toLowerCase().includes('high') ? 'badge--gold' : 'badge--teal'}`} style={{ fontSize: 11 }}>
+                            {lab.status}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* EXTRACTED PRESCRIBED MEDICATIONS SECTION */}
             {medications.length > 0 && (
