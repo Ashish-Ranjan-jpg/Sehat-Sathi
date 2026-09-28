@@ -143,7 +143,7 @@ def _send_twilio_sms(to_phone, body_text):
     """
     account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
     auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
-    from_phone = os.environ.get("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+    from_phone = os.environ.get("TWILIO_WHATSAPP_FROM", "whatsapp:+17372508034")
 
     raw_phone = (to_phone or "").strip()
     is_valid_number = _is_valid_e164_phone(raw_phone)
@@ -167,7 +167,7 @@ def _send_twilio_sms(to_phone, body_text):
             if code == 21654:
                 print(
                     f"[TWILIO WHATSAPP] Recipient {to_whatsapp} has NOT joined the sandbox.\n"
-                    f"  ACTION: Ask them to send 'join <sandbox-keyword>' to WhatsApp +14155238886.\n"
+                    f"  ACTION: Ask them to send 'join <sandbox-keyword>' to WhatsApp +17372508034.\n"
                     f"  Find your keyword at: https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn"
                 )
             elif code == 21408:
