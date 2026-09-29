@@ -160,12 +160,12 @@ def _detect_ui_source_language(text: str, target_lang: str) -> str:
 def _translate_ui_batch(items, target_lang, source_lang="en"):
     """Translate a small group in one Sarvam request while retaining stable item IDs."""
     # sarvam-translate:v1 accepts up to 2,000 characters per request.
-    marker_by_key = {}
+    key_by_index = []
     original_text_by_key = {key: text for key, text in items}
     lines = []
     for index, (key, text) in enumerate(items):
         marker = f"SSAT{index:05d}END"
-        marker_by_key[marker] = key
+        key_by_index.append(key)
         safe_text = re.sub(r"\s+", " ", text).strip()
         lines.append(f"{marker}: {safe_text}")
 
@@ -175,15 +175,16 @@ def _translate_ui_batch(items, target_lang, source_lang="en"):
     if not translated:
         return {}
 
-    marker_pattern = re.compile(r"SSAT\d{5}END")
+    # Sarvam may normalize five-digit markers to six digits after item 9.
+    marker_pattern = re.compile(r"SSAT(\d{5,6})END")
     matches = list(marker_pattern.finditer(translated))
     results = {}
     for index, match in enumerate(matches):
-        marker = match.group(0)
         end = matches[index + 1].start() if index + 1 < len(matches) else len(translated)
         value = translated[match.end():end].strip(" \t\r\n:;|-")
-        if value:
-            key = marker_by_key[marker]
+        original_index = int(match.group(1))
+        if value and original_index < len(key_by_index):
+            key = key_by_index[original_index]
             original = original_text_by_key[key]
             leading = original[:len(original) - len(original.lstrip())]
             trailing = original[len(original.rstrip()):]

@@ -1181,7 +1181,7 @@ if (typeof window !== "undefined" && window.localStorage) {
     for (const langObj of SUPPORTED_LANGUAGES) {
       const code = langObj.code;
       if (code !== "en") {
-        const cached = localStorage.getItem(`sehat_saathi_sarvam_ui_v3_${code}`);
+        const cached = localStorage.getItem(`sehat_saathi_sarvam_ui_v4_${code}`);
         if (cached) {
           translations[code] = { ...(translations[code] || {}), ...JSON.parse(cached) };
         }
@@ -1224,8 +1224,18 @@ export async function loadSarvamUITranslations(targetLang) {
   if (!targetLang || targetLang === "en") return translations.en;
   if ((sarvamRetryAfter.get(targetLang) || 0) > Date.now()) return translations[targetLang] || translations.en;
   if (fetchedSarvamLangs.has(targetLang)) return translations[targetLang];
+  if (targetLang === "bn" || targetLang === "ta") {
+    const localeModule = targetLang === "bn"
+      ? await import("./locales/bn.json")
+      : await import("./locales/ta.json");
+    Object.assign(translations[targetLang], localeModule.default);
+    if (Object.keys(translations.en).every((key) => typeof translations[targetLang]?.[key] === "string")) {
+      fetchedSarvamLangs.add(targetLang);
+      return translations[targetLang];
+    }
+  }
 
-  const dictionaryCacheKey = `sehat_saathi_sarvam_ui_v3_${targetLang}`;
+  const dictionaryCacheKey = `sehat_saathi_sarvam_ui_v4_${targetLang}`;
   try {
     const cachedStr = typeof window !== "undefined" ? localStorage.getItem(dictionaryCacheKey) : null;
     if (cachedStr) {
@@ -1244,7 +1254,7 @@ export async function loadSarvamUITranslations(targetLang) {
   let pageCache = {};
   try {
     const savedPageCache = typeof window !== "undefined"
-      ? localStorage.getItem(`sehat_saathi_sarvam_page_v1_${targetLang}`)
+      ? localStorage.getItem(`sehat_saathi_sarvam_page_v2_${targetLang}`)
       : null;
     if (savedPageCache) pageCache = JSON.parse(savedPageCache);
   } catch (error) {

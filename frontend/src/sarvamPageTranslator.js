@@ -3,7 +3,7 @@ import { translations } from "./i18n.js";
 
 const TEXT_TAGS_TO_SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "CODE", "PRE", "SVG"]);
 const ATTRIBUTES_TO_TRANSLATE = ["placeholder", "title", "aria-label", "alt"];
-const PAGE_CACHE_PREFIX = "sehat_saathi_sarvam_page_v1_";
+const PAGE_CACHE_PREFIX = "sehat_saathi_sarvam_page_v2_";
 const MAX_CACHE_ENTRIES = 3000;
 const MAX_CACHE_SIZE = 1_000_000;
 let activeSarvamTranslationJobs = 0;
@@ -232,8 +232,11 @@ export function startSarvamPageTranslator() {
       if (!translatedGroup) return false;
       group.forEach((text, index) => {
         const translated = translatedGroup[`page_${index}`];
-        cache.set(text, translated);
-        for (const item of missingByText.get(text) || []) staged.set(item, translated);
+        const safeTranslation = translated
+          .replace(/(?:\r?\n|\s)SSAT\d{5,6}END\s*:[\s\S]*$/u, "")
+          .trimEnd() || text;
+        cache.set(text, safeTranslation);
+        for (const item of missingByText.get(text) || []) staged.set(item, safeTranslation);
       });
       saveTranslationCache(requestedLanguage, cache);
     }
