@@ -90,7 +90,7 @@ function useAppLanguage() {
 }
 
 function LanguageSelector({ compact = false }) {
-  const { language, setLanguage } = useAppLanguage();
+  const { language, setLanguage, translationInProgress } = useAppLanguage();
 
   return (
     <div className={`lang-selector-wrap ${compact ? "lang-selector--compact" : ""}`}>
@@ -107,6 +107,11 @@ function LanguageSelector({ compact = false }) {
           </option>
         ))}
       </select>
+      {translationInProgress && (
+        <span data-sarvam-skip="true" role="status" aria-label="Page translation in progress" title="Page translation in progress" style={{ display: "inline-flex", flexShrink: 0, marginLeft: 4, color: "var(--teal)" }}>
+          <Loader2 size={compact ? 12 : 14} className="spin" aria-hidden="true" />
+        </span>
+      )}
     </div>
   );
 }
@@ -7647,6 +7652,7 @@ export default function App() {
   const [activeDocId, setActiveDocId] = useState(null);
   const [prefilledReminder, setPrefilledReminder] = useState(null);
   const [bootstrapping, setBootstrapping] = useState(true);
+  const [translationInProgress, setTranslationInProgress] = useState(false);
   const pageTranslatorRef = useRef(null);
 
   // Global App Language State
@@ -7676,6 +7682,14 @@ export default function App() {
     };
     window.addEventListener("sehat-saathi-translations-updated", refreshTranslatedUI);
     return () => window.removeEventListener("sehat-saathi-translations-updated", refreshTranslatedUI);
+  }, []);
+
+  useEffect(() => {
+    const updateTranslationProgress = (event) => {
+      setTranslationInProgress(Boolean(event.detail?.active));
+    };
+    window.addEventListener("sehat-saathi-translation-progress", updateTranslationProgress);
+    return () => window.removeEventListener("sehat-saathi-translation-progress", updateTranslationProgress);
   }, []);
 
   useEffect(() => {
@@ -7930,6 +7944,7 @@ export default function App() {
       value={{
         language: appLanguage,
         setLanguage: changeAppLanguage,
+        translationInProgress,
         t: (key) => translate(key, appLanguage),
       }}
     >

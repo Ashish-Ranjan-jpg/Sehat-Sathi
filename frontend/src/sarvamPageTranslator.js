@@ -6,6 +6,7 @@ const ATTRIBUTES_TO_TRANSLATE = ["placeholder", "title", "aria-label", "alt"];
 const PAGE_CACHE_PREFIX = "sehat_saathi_sarvam_page_v1_";
 const MAX_CACHE_ENTRIES = 3000;
 const MAX_CACHE_SIZE = 1_000_000;
+let activeSarvamTranslationJobs = 0;
 
 /** Translate rendered React text through Sarvam, including components absent from i18n. */
 export function startSarvamPageTranslator() {
@@ -26,6 +27,13 @@ export function startSarvamPageTranslator() {
   let busy = false;
   let scanAgain = false;
   let wholePageActive = true;
+
+  function reportTranslationJob(active) {
+    activeSarvamTranslationJobs = Math.max(0, activeSarvamTranslationJobs + (active ? 1 : -1));
+    window.dispatchEvent(new CustomEvent("sehat-saathi-translation-progress", {
+      detail: { active: activeSarvamTranslationJobs > 0 },
+    }));
+  }
 
   function getSourceTextForKnownTranslation(targetLanguage, value) {
     const localized = translations[targetLanguage];
@@ -93,13 +101,19 @@ export function startSarvamPageTranslator() {
     element.setAttribute(name, value);
   }
 
+  function isVisible(element) {
+    if (!element || element.closest("[hidden],[aria-hidden='true'],[data-sarvam-skip]")) return false;
+    const style = window.getComputedStyle(element);
+    return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+  }
+
   function collect() {
     const work = [];
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
       const parent = node.parentElement;
-      if (!parent || TEXT_TAGS_TO_SKIP.has(parent.tagName) || parent.closest("[data-sarvam-skip],script,style,noscript,[contenteditable='true']")) continue;
+      if (!parent || TEXT_TAGS_TO_SKIP.has(parent.tagName) || parent.closest("script,style,noscript,[contenteditable='true']") || !isVisible(parent)) continue;
       const current = node.nodeValue || "";
       if (!current.trim()) continue;
       let original = originals.get(node);
@@ -131,7 +145,7 @@ export function startSarvamPageTranslator() {
     }
 
     for (const element of document.body.querySelectorAll("input,textarea,button,[title],[aria-label],[alt]")) {
-      if (element.closest("[data-sarvam-skip],[contenteditable='true']")) continue;
+      if (element.closest("[contenteditable='true']") || !isVisible(element)) continue;
       for (const name of ATTRIBUTES_TO_TRANSLATE) {
         if (!element.hasAttribute(name)) continue;
         const current = element.getAttribute(name) || "";
@@ -169,6 +183,11 @@ export function startSarvamPageTranslator() {
   }
 
   async function translateWork(work, requestedLanguage) {
+    if (!work.length) return true;
+    return await translateWorkBatches(work, requestedLanguage);
+  }
+
+  async function translateWorkBatches(work, requestedLanguage) {
     // Keep each browser request modest. The backend packs actual Sarvam calls
     // under the provider's 2,000 character limit. Persist translations so a
     // repeat visit or language switch reuses the result without another API call.
@@ -279,6 +298,7 @@ export function startSarvamPageTranslator() {
     language = targetLanguage || "en";
     wholePageActive = true;
     clearTimeout(scanTimer);
+    reportTranslationJob(true);
     try {
       for (let round = 0; round < 8; round++) {
         scanAgain = false;
@@ -297,6 +317,7 @@ export function startSarvamPageTranslator() {
       }
       return false;
     } finally {
+      reportTranslationJob(false);
       wholePageActive = false;
       if (scanAgain) scheduleScan();
     }
