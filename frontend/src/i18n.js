@@ -1195,6 +1195,15 @@ if (typeof window !== "undefined" && window.localStorage) {
 const fetchedSarvamLangs = new Set();
 const sarvamRetryAfter = new Map();
 const scheduledSarvamRetries = new Set();
+let activeDictionaryLoads = 0;
+
+function reportDictionaryLoad(active) {
+  if (typeof window === "undefined") return;
+  activeDictionaryLoads = Math.max(0, activeDictionaryLoads + (active ? 1 : -1));
+  window.dispatchEvent(new CustomEvent("sehat-saathi-translation-progress", {
+    detail: { active: activeDictionaryLoads > 0 },
+  }));
+}
 
 function scheduleSarvamRetry(targetLang) {
   if (typeof window === "undefined" || scheduledSarvamRetries.has(targetLang)) return;
@@ -1214,69 +1223,88 @@ function scheduleSarvamRetry(targetLang) {
 export async function loadSarvamUITranslations(targetLang) {
   if (!targetLang || targetLang === "en") return translations.en;
   if ((sarvamRetryAfter.get(targetLang) || 0) > Date.now()) return translations[targetLang] || translations.en;
+  if (fetchedSarvamLangs.has(targetLang)) return translations[targetLang];
 
-  // If already fetched in this browser session, return immediately
-  if (fetchedSarvamLangs.has(targetLang)) {
-    return translations[targetLang];
-  }
-
-  // Check LocalStorage cache (only use if contains valid translations)
-  const cachedStr = typeof window !== "undefined" ? localStorage.getItem(`sehat_saathi_sarvam_ui_v3_${targetLang}`) : null;
-  if (cachedStr) {
-    try {
+  const dictionaryCacheKey = `sehat_saathi_sarvam_ui_v3_${targetLang}`;
+  try {
+    const cachedStr = typeof window !== "undefined" ? localStorage.getItem(dictionaryCacheKey) : null;
+    if (cachedStr) {
       const cached = JSON.parse(cachedStr);
       if (cached && Object.keys(translations.en).every((key) => typeof cached[key] === "string")) {
         translations[targetLang] = { ...(translations[targetLang] || {}), ...cached };
         fetchedSarvamLangs.add(targetLang);
         return translations[targetLang];
       }
-    } catch (err) {
-      console.warn("Invalid cached translation JSON", err);
     }
+  } catch (err) {
+    console.warn("Invalid cached translation dictionary", err);
   }
 
+  const baseDict = translations.en || {};
+  let pageCache = {};
   try {
-    // Send full English base UI dictionary keys to backend /api/translate-ui powered by Sarvam AI
-    const baseDict = translations.en || {};
+    const savedPageCache = typeof window !== "undefined"
+      ? localStorage.getItem(`sehat_saathi_sarvam_page_v1_${targetLang}`)
+      : null;
+    if (savedPageCache) pageCache = JSON.parse(savedPageCache);
+  } catch (error) {
+    console.warn("Invalid saved page translation cache", error);
+  }
+
+  const cachedDictionaryEntries = {};
+  const missingDictionaryEntries = {};
+  for (const [key, sourceText] of Object.entries(baseDict)) {
+    if (typeof pageCache[sourceText] === "string") cachedDictionaryEntries[key] = pageCache[sourceText];
+    else missingDictionaryEntries[key] = sourceText;
+  }
+
+  if (Object.keys(missingDictionaryEntries).length === 0) {
+    translations[targetLang] = { ...(translations[targetLang] || {}), ...cachedDictionaryEntries };
+    fetchedSarvamLangs.add(targetLang);
+    try { localStorage.setItem(dictionaryCacheKey, JSON.stringify(translations[targetLang])); }
+    catch (error) { console.warn("Could not persist completed translation dictionary", error); }
+    return translations[targetLang];
+  }
+
+  reportDictionaryLoad(true);
+  try {
     const apiBase = API_BASE.replace(/\/+$/, "");
     const res = await fetch(`${apiBase}/api/translate-ui`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        target_lang: targetLang,
-        texts: baseDict
-      })
+      body: JSON.stringify({ target_lang: targetLang, texts: missingDictionaryEntries }),
     });
-
-    if (!res.ok) {
-      throw new Error(`Translation API returned HTTP ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`Translation API returned HTTP ${res.status}`);
 
     const data = await res.json();
     if (!["success", "partial"].includes(data.status) || !data.translations) {
       throw new Error(data.message || "Translation API did not return translations");
     }
 
-    translations[targetLang] = { ...(translations[targetLang] || {}), ...data.translations };
+    translations[targetLang] = {
+      ...(translations[targetLang] || {}),
+      ...cachedDictionaryEntries,
+      ...data.translations,
+    };
     if (data.status === "success") {
       fetchedSarvamLangs.add(targetLang);
       sarvamRetryAfter.delete(targetLang);
-      if (typeof window !== "undefined" && window.localStorage) {
-        localStorage.setItem(`sehat_saathi_sarvam_ui_v3_${targetLang}`, JSON.stringify(data.translations));
-      }
+      try { localStorage.setItem(dictionaryCacheKey, JSON.stringify(translations[targetLang])); }
+      catch (error) { console.warn("Could not persist completed translation dictionary", error); }
     } else {
       sarvamRetryAfter.set(targetLang, Date.now() + 62_000);
       scheduleSarvamRetry(targetLang);
-      console.warn(`[i18n] Sarvam returned a partial ${targetLang} translation; retrying after a short cooldown.`);
+      console.warn(`[i18n] Sarvam returned a partial ${targetLang} dictionary; retrying after a short cooldown.`);
     }
     return translations[targetLang];
   } catch (error) {
     sarvamRetryAfter.set(targetLang, Date.now() + 62_000);
     scheduleSarvamRetry(targetLang);
     console.error("[i18n] Failed to fetch Sarvam UI translations:", error);
+    return translations[targetLang] || translations.en;
+  } finally {
+    reportDictionaryLoad(false);
   }
-
-  return translations[targetLang] || translations.en;
 }
 
 

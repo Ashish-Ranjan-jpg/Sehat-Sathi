@@ -72,7 +72,7 @@ import {
   AlarmClock,
 } from "lucide-react";
 import { api, getToken, clearToken } from "./api";
-import { SUPPORTED_LANGUAGES, t as translate } from "./i18n";
+import { SUPPORTED_LANGUAGES, t as translate, loadSarvamUITranslations } from "./i18n";
 import { startSarvamPageTranslator } from "./sarvamPageTranslator";
 
 // ---------------------------------------------------------------------------
@@ -7702,6 +7702,11 @@ export default function App() {
     document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", translate("Sehat Saathi", appLanguage));
 
     (async () => {
+      await loadSarvamUITranslations(appLanguage);
+      if (!active) return;
+      setTranslationRevision((revision) => revision + 1);
+      document.title = translate("Sehat Saathi - Multilingual AI Healthcare Engine", appLanguage);
+      document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", translate("Sehat Saathi", appLanguage));
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const complete = await pageTranslatorRef.current?.translatePage(appLanguage);
       if (active && complete === false) console.warn("Sarvam returned an incomplete page translation.");
