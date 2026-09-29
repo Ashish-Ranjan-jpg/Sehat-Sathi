@@ -72,7 +72,7 @@ import {
   AlarmClock,
 } from "lucide-react";
 import { api, getToken, clearToken } from "./api";
-import { SUPPORTED_LANGUAGES, t as translate, loadSarvamUITranslations } from "./i18n";
+import { SUPPORTED_LANGUAGES, t as translate } from "./i18n";
 import { startSarvamPageTranslator } from "./sarvamPageTranslator";
 
 // ---------------------------------------------------------------------------
@@ -7647,6 +7647,7 @@ export default function App() {
   const [activeDocId, setActiveDocId] = useState(null);
   const [prefilledReminder, setPrefilledReminder] = useState(null);
   const [bootstrapping, setBootstrapping] = useState(true);
+  const pageTranslatorRef = useRef(null);
 
   // Global App Language State
   const [appLanguage, setAppLanguageState] = useState(() => {
@@ -7657,7 +7658,14 @@ export default function App() {
 
   // Sarvam the rendered page as well as the known i18n dictionary. This catches
   // literal labels, form hints, and text in screens mounted after login.
-  useEffect(() => startSarvamPageTranslator(), []);
+  useEffect(() => {
+    const pageTranslator = startSarvamPageTranslator();
+    pageTranslatorRef.current = pageTranslator;
+    return () => {
+      pageTranslator.dispose();
+      pageTranslatorRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const refreshTranslatedUI = () => {
@@ -7671,35 +7679,27 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let active = true;
     document.documentElement.lang = appLanguage;
     document.documentElement.dir = appLanguage === "ur" ? "rtl" : "ltr";
     window.dispatchEvent(new Event("sehat-saathi-language-changed"));
+    pageTranslatorRef.current?.setLanguage();
     document.title = translate("Sehat Saathi - Multilingual AI Healthcare Engine", appLanguage);
     document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", translate("Sehat Saathi", appLanguage));
 
-    // Re-render after translations are added to the in-memory dictionary.
-    let active = true;
-    loadSarvamUITranslations(appLanguage)
-      .then(() => {
-        if (active) {
-          setTranslationRevision((revision) => revision + 1);
-          document.title = translate("Sehat Saathi - Multilingual AI Healthcare Engine", appLanguage);
-          document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", translate("Sehat Saathi", appLanguage));
-        }
-      })
-      .catch(err => console.warn("Sarvam UI translation err:", err));
+    (async () => {
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const complete = await pageTranslatorRef.current?.translatePage(appLanguage);
+      if (active && complete === false) console.warn("Sarvam returned an incomplete page translation.");
+    })().catch(err => {
+      if (active) console.warn("Sarvam page translation failed:", err);
+    });
     return () => { active = false; };
   }, [appLanguage]);
 
   async function changeAppLanguage(newLang) {
-    setAppLanguageState(newLang);
     localStorage.setItem("sehat_saathi_lang", newLang);
-    try {
-      await loadSarvamUITranslations(newLang);
-      setTranslationRevision((revision) => revision + 1);
-    } catch (e) {
-      console.warn("Sarvam UI translation update warning", e);
-    }
+    setAppLanguageState(newLang);
   }
 
   // Restore authenticated session on mount

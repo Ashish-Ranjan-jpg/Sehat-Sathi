@@ -34,6 +34,21 @@ SARVAM_LANG_MAP = {
 }
 
 SARVAM_API_URL = "https://api.sarvam.ai/translate"
+_SARVAM_REQUEST_INTERVAL = 1.01  # Keep just under the documented 60 requests/minute Starter limit.
+_SARVAM_REQUEST_LOCK = threading.Lock()
+_SARVAM_NEXT_REQUEST_AT = 0.0
+
+
+def _wait_for_sarvam_request_slot():
+    """Rate-limit request start times across translation batches and users."""
+    global _SARVAM_NEXT_REQUEST_AT
+    with _SARVAM_REQUEST_LOCK:
+        now = time.monotonic()
+        request_at = max(now, _SARVAM_NEXT_REQUEST_AT)
+        _SARVAM_NEXT_REQUEST_AT = request_at + _SARVAM_REQUEST_INTERVAL
+    delay = request_at - now
+    if delay > 0:
+        time.sleep(delay)
 
 
 def get_sarvam_api_key():
@@ -86,6 +101,7 @@ def translate_text_with_sarvam(text: str, target_lang: str, source_lang: str = "
 
     for attempt in range(4):
         try:
+            _wait_for_sarvam_request_slot()
             response = requests.post(SARVAM_API_URL, json=payload, headers=headers, timeout=20)
             if response.status_code == 200:
                 data = response.json()
@@ -191,11 +207,11 @@ def _translate_ui_dictionary_locked(texts_dict: dict, target_lang: str, return_s
     cache_key = (target_lang, fingerprint)
     cached = _UI_TRANSLATION_CACHE.get(cache_key)
     if cached is not None:
+        for key, value in texts_dict.items():
+            if isinstance(value, str) and isinstance(cached.get(key), str):
+                source_lang = _detect_ui_source_language(value, target_lang)
+                _UI_TEXT_CACHE[(source_lang, target_lang, value)] = cached[key]
         return (cached.copy(), True) if return_status else cached.copy()
-    partial = _UI_TRANSLATION_PARTIAL_CACHE.get(cache_key)
-    if partial and time.monotonic() - partial[0] < 60:
-        return (partial[1].copy(), False) if return_status else partial[1].copy()
-
     output = dict(texts_dict)
     entries = [
         (key, value) for key, value in texts_dict.items()
@@ -205,6 +221,8 @@ def _translate_ui_dictionary_locked(texts_dict: dict, target_lang: str, return_s
     # Reuse individual results when the rendered-page translator discovers
     # strings already translated by the static dictionary or another screen.
     pending_by_source = {}
+    oversized_parts = {}
+    oversized_part_texts = {}
     for key, value in entries:
         source_lang = _detect_ui_source_language(value, target_lang)
         text_cache_key = (source_lang, target_lang, value)
@@ -214,10 +232,29 @@ def _translate_ui_dictionary_locked(texts_dict: dict, target_lang: str, return_s
         elif source_lang == target_lang:
             output[key] = value
             _UI_TEXT_CACHE[text_cache_key] = value
+        elif len(value) + 20 > 1900:
+            parts = []
+            remaining = value
+            while remaining:
+                split_at = min(1850, len(remaining))
+                if split_at < len(remaining):
+                    word_boundary = remaining.rfind(" ", 0, split_at)
+                    if word_boundary > 0:
+                        split_at = word_boundary
+                parts.append(remaining[:split_at].strip())
+                remaining = remaining[split_at:].lstrip()
+            part_keys = []
+            for index, part in enumerate(parts):
+                part_key = f"__long_{len(oversized_parts)}_{index}"
+                part_keys.append(part_key)
+                oversized_part_texts[part_key] = part
+                pending_by_source.setdefault(source_lang, []).append((part_key, part))
+            oversized_parts[key] = part_keys
         else:
             pending_by_source.setdefault(source_lang, []).append((key, value))
 
     complete = True
+    oversized_part_keys = {part_key for keys in oversized_parts.values() for part_key in keys}
     for source_lang, source_entries in pending_by_source.items():
         batches = []
         batch = []
@@ -225,11 +262,7 @@ def _translate_ui_dictionary_locked(texts_dict: dict, target_lang: str, return_s
         for key, value in source_entries:
             # Include room for the stable marker and separators.
             row_length = len(value) + 20
-            if row_length > 1750:
-                output[key] = value
-                complete = False
-                continue
-            if batch and char_count + row_length > 1750:
+            if batch and char_count + row_length > 1900:
                 batches.append(batch)
                 batch = []
                 char_count = 0
@@ -240,20 +273,30 @@ def _translate_ui_dictionary_locked(texts_dict: dict, target_lang: str, return_s
 
         for group in batches:
             translated_group = _translate_ui_batch(group, target_lang, source_lang)
-            output.update(translated_group)
             group_texts = dict(group)
             for key, translated_value in translated_group.items():
                 _UI_TEXT_CACHE[(source_lang, target_lang, group_texts[key])] = translated_value
+                if key not in oversized_part_keys:
+                    output[key] = translated_value
             if len(translated_group) != len(group):
                 complete = False
-            # Sarvam's starter tier is rate limited; pace upstream requests.
-            time.sleep(1.05)
+
+    for key, part_keys in oversized_parts.items():
+        translated_parts = []
+        for part_key in part_keys:
+            part_text = oversized_part_texts[part_key]
+            part_source = _detect_ui_source_language(part_text, target_lang)
+            part_value = _UI_TEXT_CACHE.get((part_source, target_lang, part_text))
+            if part_value is None:
+                complete = False
+                break
+            translated_parts.append(part_value)
+        if len(translated_parts) == len(part_keys):
+            output[key] = " ".join(translated_parts)
 
     if complete:
         _UI_TRANSLATION_CACHE[cache_key] = output.copy()
         _UI_TRANSLATION_PARTIAL_CACHE.pop(cache_key, None)
-    else:
-        _UI_TRANSLATION_PARTIAL_CACHE[cache_key] = (time.monotonic(), output.copy())
     return (output, complete) if return_status else output
 
 
