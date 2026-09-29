@@ -3,7 +3,7 @@
    Cache Strategies: Pre-cache App Shell, Network-First for APIs, Offline Support
    ========================================================================== */
 
-const CACHE_NAME = "sehat-saathi-v1";
+const CACHE_NAME = "sehat-saathi-v2";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -50,8 +50,9 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
+  // Skip non-GET requests and unsupported schemes (e.g., chrome-extension://)
   if (request.method !== "GET") return;
+  if (!url.protocol.startsWith("http")) return;
 
   // Handle API Requests (Network-First with Cache Fallback)
   if (url.pathname.startsWith("/api/") || url.port === "8000") {

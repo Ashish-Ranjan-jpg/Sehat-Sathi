@@ -837,6 +837,30 @@ def translate_health_topic(req: TranslateTopicRequest):
         raise HTTPException(status_code=404, detail=f"Topic not found: {req.topic_id}")
     return translated
 
+class TranslateUIRequest(BaseModel):
+    target_lang: str
+    texts: dict[str, str]
+
+
+@app.post("/api/translate-ui")
+def translate_ui_strings(req: TranslateUIRequest):
+    """
+    Translate platform UI component text dictionary into target_lang using Sarvam AI API.
+    """
+    try:
+        import sarvam_translator
+        result, complete = sarvam_translator.translate_ui_dictionary(
+            req.texts, req.target_lang, return_status=True
+        )
+        return {
+            "status": "success" if complete else "partial",
+            "target_lang": req.target_lang,
+            "translations": result,
+        }
+    except Exception as e:
+        print(f"[API] Error translating UI with Sarvam AI: {e}")
+        return {"status": "error", "message": str(e), "translations": req.texts}
+
 
 # ---------------------------------------------------------------------------
 # MEDICATION REMINDERS ENDPOINTS
@@ -1222,4 +1246,4 @@ def get_nearby_facilities(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
+

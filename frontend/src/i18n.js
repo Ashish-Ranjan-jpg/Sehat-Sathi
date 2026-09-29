@@ -18,6 +18,8 @@ export const SUPPORTED_LANGUAGES = [
 ];
 
 import { hindiInline } from "./i18n_hardcoded.js";
+import { API_BASE } from "./api.js";
+import { appUiStrings } from "./i18n_app_strings.js";
 
 export const translations = {
   en: {
@@ -1145,6 +1147,9 @@ export const translations = {
   },
 };
 
+// Register literal component copy so it can be translated through Sarvam too.
+for (const text of appUiStrings) translations.en[text] = text;
+
 // English keeps untranslated interface strings readable instead of mixing
 // Hindi into a different selected language.
 Object.assign(translations.hi, hindiInline);
@@ -1163,7 +1168,121 @@ export function t(key, lang = globalThis.localStorage?.getItem("sehat_saathi_lan
     : value;
   if (dict[dictionaryKey] !== undefined) return localizeBrand(dict[dictionaryKey]);
   if (currentLang === "en") return key;
-  if (translations.hi[dictionaryKey] !== undefined) return localizeBrand(translations.hi[dictionaryKey]);
+  if (currentLang === "hi" && translations.hi[dictionaryKey] !== undefined) {
+    return localizeBrand(translations.hi[dictionaryKey]);
+  }
   if (translations.en[dictionaryKey] !== undefined) return localizeBrand(translations.en[dictionaryKey]);
   return localizeBrand(key);
+}
+
+// Load cached Sarvam translations from localStorage on initialization if available
+if (typeof window !== "undefined" && window.localStorage) {
+  try {
+    for (const langObj of SUPPORTED_LANGUAGES) {
+      const code = langObj.code;
+      if (code !== "en") {
+        const cached = localStorage.getItem(`sehat_saathi_sarvam_ui_v3_${code}`);
+        if (cached) {
+          translations[code] = { ...(translations[code] || {}), ...JSON.parse(cached) };
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[i18n] Error loading cached Sarvam UI translations", e);
+  }
+}
+
+const fetchedSarvamLangs = new Set();
+const sarvamRetryAfter = new Map();
+const scheduledSarvamRetries = new Set();
+
+function scheduleSarvamRetry(targetLang) {
+  if (typeof window === "undefined" || scheduledSarvamRetries.has(targetLang)) return;
+  scheduledSarvamRetries.add(targetLang);
+  window.setTimeout(async () => {
+    scheduledSarvamRetries.delete(targetLang);
+    if (localStorage.getItem("sehat_saathi_lang") !== targetLang) return;
+    sarvamRetryAfter.delete(targetLang);
+    await loadSarvamUITranslations(targetLang);
+    window.dispatchEvent(new Event("sehat-saathi-translations-updated"));
+  }, 62_000);
+}
+
+/**
+ * Dynamically fetch & update UI component translations for targetLang using Sarvam AI via backend API /api/translate-ui
+ */
+export async function loadSarvamUITranslations(targetLang) {
+  if (!targetLang || targetLang === "en") return translations.en;
+  if ((sarvamRetryAfter.get(targetLang) || 0) > Date.now()) return translations[targetLang] || translations.en;
+
+  // If already fetched in this browser session, return immediately
+  if (fetchedSarvamLangs.has(targetLang)) {
+    return translations[targetLang];
+  }
+
+  // Check LocalStorage cache (only use if contains valid translations)
+  const cachedStr = typeof window !== "undefined" ? localStorage.getItem(`sehat_saathi_sarvam_ui_v3_${targetLang}`) : null;
+  if (cachedStr) {
+    try {
+      const cached = JSON.parse(cachedStr);
+      if (cached && Object.keys(translations.en).every((key) => typeof cached[key] === "string")) {
+        translations[targetLang] = { ...(translations[targetLang] || {}), ...cached };
+        fetchedSarvamLangs.add(targetLang);
+        return translations[targetLang];
+      }
+    } catch (err) {
+      console.warn("Invalid cached translation JSON", err);
+    }
+  }
+
+  try {
+    // Send full English base UI dictionary keys to backend /api/translate-ui powered by Sarvam AI
+    const baseDict = translations.en || {};
+    const apiBase = API_BASE.replace(/\/+$/, "");
+    const res = await fetch(`${apiBase}/api/translate-ui`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        target_lang: targetLang,
+        texts: baseDict
+      })
+    });
+
+    if (!res.ok) {
+      throw new Error(`Translation API returned HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    if (!["success", "partial"].includes(data.status) || !data.translations) {
+      throw new Error(data.message || "Translation API did not return translations");
+    }
+
+    translations[targetLang] = { ...(translations[targetLang] || {}), ...data.translations };
+    if (data.status === "success") {
+      fetchedSarvamLangs.add(targetLang);
+      sarvamRetryAfter.delete(targetLang);
+      if (typeof window !== "undefined" && window.localStorage) {
+        localStorage.setItem(`sehat_saathi_sarvam_ui_v3_${targetLang}`, JSON.stringify(data.translations));
+      }
+    } else {
+      sarvamRetryAfter.set(targetLang, Date.now() + 62_000);
+      scheduleSarvamRetry(targetLang);
+      console.warn(`[i18n] Sarvam returned a partial ${targetLang} translation; retrying after a short cooldown.`);
+    }
+    return translations[targetLang];
+  } catch (error) {
+    sarvamRetryAfter.set(targetLang, Date.now() + 62_000);
+    scheduleSarvamRetry(targetLang);
+    console.error("[i18n] Failed to fetch Sarvam UI translations:", error);
+  }
+
+  return translations[targetLang] || translations.en;
+}
+
+
+/**
+ * Backward-compatible alias for UI translation loading
+ */
+export async function applyBrowserTranslation(targetLang) {
+  return await loadSarvamUITranslations(targetLang);
 }

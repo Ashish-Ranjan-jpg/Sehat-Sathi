@@ -72,7 +72,8 @@ import {
   AlarmClock,
 } from "lucide-react";
 import { api, getToken, clearToken } from "./api";
-import { SUPPORTED_LANGUAGES, t as translate } from "./i18n";
+import { SUPPORTED_LANGUAGES, t as translate, loadSarvamUITranslations } from "./i18n";
+import { startSarvamPageTranslator } from "./sarvamPageTranslator";
 
 // ---------------------------------------------------------------------------
 // GLOBAL LANGUAGE CONTEXT & SELECTOR
@@ -246,8 +247,8 @@ function PasswordField({
           type="button"
           className="password-toggle-btn"
           onClick={() => setShow((prev) => !prev)}
-          title={show ? "Hide password" : "Show password"}
-          aria-label={show ? "Hide password" : "Show password"}
+          title={show ? translate("Hide password") : translate("Show password")}
+          aria-label={show ? translate("Hide password") : translate("Show password")}
           tabIndex={-1}
         >
           {show ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
@@ -325,7 +326,7 @@ function PasswordStrengthIndicator({ password }) {
               <span className="pwd-req-icon">
                 {req.met ? <Check size={11} strokeWidth={3} /> : "•"}
               </span>
-              <span>{req.label}</span>
+              <span>{translate(req.label)}</span>
             </div>
           ))}
         </div>
@@ -430,7 +431,7 @@ function GlobalModals() {
             <div className={`confirm-modal__icon ${confirm.danger ? "confirm-modal__icon--danger" : "confirm-modal__icon--info"}`}>
               {confirm.danger ? <Trash2 size={22} /> : <AlertCircle size={22} />}
             </div>
-            <h3>{confirm.title || (confirm.danger ? "Are you sure?" : "Confirm action")}</h3>
+            <h3>{confirm.title || (confirm.danger ? translate("Are you sure?") : translate("Confirm action"))}</h3>
             <p>{confirm.message}</p>
             <div className="confirm-modal__actions">
               <button className="btn btn--secondary" onClick={() => setConfirm({ open: false })}>
@@ -1174,22 +1175,22 @@ function playNotificationChime() {
   }
 }
 
-function formatRelativeTime(dateStr) {
+function formatRelativeTime(dateStr, language = globalThis.localStorage?.getItem("sehat_saathi_lang") || "hi") {
   if (!dateStr) return "";
   try {
     const cleanStr = dateStr.replace("Z", "");
     const date = new Date(cleanStr);
     const now = new Date();
     const diffSec = Math.floor((now - date) / 1000);
-    if (isNaN(diffSec) || diffSec < 0) return "Just now";
-    if (diffSec < 30) return "Just now";
-    if (diffSec < 60) return `${diffSec}s ago`;
+    const relative = new Intl.RelativeTimeFormat(language, { numeric: "auto" });
+    if (isNaN(diffSec) || diffSec < 0 || diffSec < 30) return relative.format(0, "second");
+    if (diffSec < 60) return relative.format(-diffSec, "second");
     const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffMin < 60) return relative.format(-diffMin, "minute");
     const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr}h ago`;
+    if (diffHr < 24) return relative.format(-diffHr, "hour");
     const diffDay = Math.floor(diffHr / 24);
-    return `${diffDay}d ago`;
+    return relative.format(-diffDay, "day");
   } catch (e) {
     return dateStr;
   }
@@ -1203,7 +1204,7 @@ function NotificationBellDrawer({ onNav }) {
   const [loading, setLoading] = useState(false);
   const prevUnreadRef = useRef(0);
   const drawerRef = useRef(null);
-  const { t } = useAppLanguage();
+  const { t, language } = useAppLanguage();
 
   const fetchNotifications = useCallback(async (isInitial = false) => {
     try {
@@ -1327,8 +1328,8 @@ function NotificationBellDrawer({ onNav }) {
         type="button"
         className={`notif-bell-btn ${unreadCount > 0 ? "has-unread" : ""}`}
         onClick={() => setIsOpen((prev) => !prev)}
-        title={`Notifications (${unreadCount} unread)`}
-        aria-label={`Notifications (${unreadCount} unread)`}
+        title={`${translate("Notifications (")}${unreadCount} ${translate("unread)")}`}
+        aria-label={`${translate("Notifications (")}${unreadCount} ${translate("unread)")}`}
       >
         <Bell size={18} strokeWidth={2} />
         {unreadCount > 0 && (
@@ -1443,7 +1444,7 @@ function NotificationBellDrawer({ onNav }) {
                     <div className="notif-item__body">
                       <div className="notif-item__top">
                         <strong className="notif-item__title">{item.title}</strong>
-                        <span className="notif-item__time">{formatRelativeTime(item.created_at)}</span>
+                        <span className="notif-item__time">{formatRelativeTime(item.created_at, language)}</span>
                       </div>
                       <p className="notif-item__msg">{item.message}</p>
 
@@ -1938,7 +1939,7 @@ function PatientDashboard({ patient, onNav, onOpenDocument, onLogout }) {
                     <div>
                       <div className="med-widget-name">{m.name}</div>
                       <div className="med-widget-sub">
-                        {m.dosage ? `${t("reminders.dosage")}: ${m.dosage}` : "As prescribed"} {m.frequency ? `· ${m.frequency}` : ""}
+                        {m.dosage ? `${t("reminders.dosage")}: ${m.dosage}` : translate("As prescribed")} {m.frequency ? `· ${m.frequency}` : ""}
                       </div>
                     </div>
                     <button
@@ -2457,7 +2458,7 @@ function UploadScreen({ role, currentPatient, onNav, onUploaded, onLogout }) {
                       {fileName}
                     </strong>
                     <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                      {file.size ? `${(file.size / 1024).toFixed(1)} KB` : "Document ready for processing"}
+                      {file.size ? `${(file.size / 1024).toFixed(1)} KB` : translate("Document ready for processing")}
                     </span>
                   </div>
                   <button
@@ -2775,8 +2776,8 @@ function TTSPlayer({ extraction }) {
               <Pause size={16} fill="currentColor" /> {translate("Pause")}
             </button>
           ) : (
-            <button className="tts-btn tts-btn--main tts-btn--play" onClick={handlePlay} title={isPaused ? "Resume" : "Play"}>
-              <Play size={16} fill="currentColor" /> {isPaused ? "Resume" : "Play"}
+            <button className="tts-btn tts-btn--main tts-btn--play" onClick={handlePlay} title={isPaused ? translate("Resume") : translate("Play")}>
+              <Play size={16} fill="currentColor" /> {isPaused ? translate("Resume") : translate("Play")}
             </button>
           )}
         </div>
@@ -2821,7 +2822,7 @@ function TTSPlayer({ extraction }) {
 
       <details className="tts-script-preview">
         <summary>{t("audio.previewScript")}</summary>
-        <p>{script || "No content available to speak."}</p>
+        <p>{script || translate("No content available to speak.")}</p>
       </details>
     </div>
   );
@@ -3254,7 +3255,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
                   onClick={() => handleSelectSession(s)}
                 >
                   <div className="chatbot-history-item-content">
-                    <div className="chatbot-history-item-title">{s.title || "Chat Conversation"}</div>
+                    <div className="chatbot-history-item-title">{s.title || translate("Chat Conversation")}</div>
                     <div className="chatbot-history-item-meta">
                       <span>{s.message_count || 0} {translate("messages")}</span>
                       <span>{translate("•")}</span>
@@ -3317,7 +3318,7 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
                           type="button"
                           className={`copy-btn ${speakingMsgIdx === idx ? "copy-btn--speaking" : ""}`}
                           onClick={() => speakMessage(m.text, idx)}
-                          title={speakingMsgIdx === idx ? "Stop Listening" : "Listen to response"}
+                          title={speakingMsgIdx === idx ? translate("Stop Listening") : translate("Listen to response")}
                         >
                           {speakingMsgIdx === idx ? (
                             <>
@@ -3375,14 +3376,14 @@ function AIChatBot({ documentId, initialLanguage = "hi" }) {
               className={`mic-btn ${recording ? "mic-btn--recording" : ""}`}
               onClick={toggleRecording}
               disabled={sending || transcribing}
-              title={recording ? "Stop Recording & Auto Send" : "Speak your query (Voice Input)"}
+              title={recording ? translate("Stop Recording & Auto Send") : translate("Speak your query (Voice Input)")}
             >
               {recording ? <MicOff size={18} /> : <Mic size={18} />}
             </button>
 
             <input
               type="text"
-              placeholder={recording ? "Listening... Speak now!" : "Type or speak your question..."}
+              placeholder={recording ? translate("Listening... Speak now!") : translate("Type or speak your question...")}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={sending || recording || transcribing}
@@ -3470,10 +3471,10 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
       active="dashboard"
       onNav={onNav}
       onLogout={onLogout}
-      title={extraction.document_type || docRecord?.original_filename || t("docDetail.docDetails")}
+      title={extraction.document_type ? translateDocumentType(extraction.document_type) : docRecord?.original_filename || t("docDetail.docDetails")}
       subtitle={
         docRecord
-          ? `Uploaded ${new Date(docRecord.uploaded_at).toLocaleString()} · Language: ${getLanguageName(extraction.language)}`
+          ? `${translate("Uploaded")} ${new Date(docRecord.uploaded_at).toLocaleString()} ? ${translate("Language:")} ${getLanguageName(extraction.language)}`
           : "Analyzing document..."
       }
     >
@@ -3578,7 +3579,7 @@ function DocumentDetailScreen({ role, documentId, onNav, onBack, onLogout }) {
                     >
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                          <h4 style={{ margin: 0, fontSize: 16, color: "var(--ink)", fontWeight: 700 }}>{med.name || "Unknown Medicine"}</h4>
+                          <h4 style={{ margin: 0, fontSize: 16, color: "var(--ink)", fontWeight: 700 }}>{med.name || translate("Unknown Medicine")}</h4>
                           {med.dosage && <span className="badge badge--gold" style={{ fontSize: 11 }}>{med.dosage}</span>}
                         </div>
 
@@ -3878,7 +3879,7 @@ function ProfileScreen({ user, patient, onNav, onLogout, onProfileUpdated }) {
             </div>
             <div className="profile-hero-info">
               <div className="profile-hero-name-row">
-                <h2 className="profile-hero-name">{name || "Patient Profile"}</h2>
+                <h2 className="profile-hero-name">{name || translate("Patient Profile")}</h2>
                 <span className="profile-badge profile-badge--verified">
                   <BadgeCheck size={14} /> {translate("Registered Patient")}
                 </span>
@@ -3941,7 +3942,7 @@ function ProfileScreen({ user, patient, onNav, onLogout, onProfileUpdated }) {
             <div className="profile-stat-card">
               <Activity size={20} className="stat-icon" />
               <div>
-                <div className="stat-value">{bloodGroup || "Not Set"}</div>
+                <div className="stat-value">{bloodGroup || translate("Not Set")}</div>
                 <div className="stat-label">{t("profile.bloodGroup")}</div>
               </div>
             </div>
@@ -4484,7 +4485,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
     e.preventDefault();
     showConfirm({
       title: translate(translate("Confirm Emergency Ambulance Request?")),
-      message: translate("Requesting 108 Emergency Ambulance dispatch for condition: \"") + patientCondition + translate("\". Ensure your location is clear."),
+      message: translate("Requesting 108 Emergency Ambulance dispatch for condition: \"") + translate(patientCondition) + translate("\". Ensure your location is clear."),
       confirmLabel: translate(translate("Call 108 Ambulance Now")),
       onConfirm: () => {
         window.location.href = "tel:108";
@@ -4637,8 +4638,8 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
             <MapPin size={14} color="var(--teal)" />
             <span>
               {userCoords
-                ? `GPS Active: Latitude ${roundCoords(userCoords.lat)}, Longitude ${roundCoords(userCoords.lng)}`
-                : "Location detection active"}
+                ? `${translate("GPS Active: Latitude")} ${roundCoords(userCoords.lat)}, ${translate("Longitude")} ${roundCoords(userCoords.lng)}`
+                : translate("Location detection active")}
             </span>
           </div>
 
@@ -4738,7 +4739,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                 className={`chip-btn ${firstAidCategory === c.id ? "active" : ""}`}
                 onClick={() => setFirstAidCategory(c.id)}
               >
-                {c.label}
+                {translate(c.label)}
               </button>
             ))}
           </div>
@@ -4766,7 +4767,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                       </div>
                     </div>
                     <span className={`badge badge--${guide.severity === "CRITICAL" ? "brick" : "gold"}`}>
-                      {guide.severity}
+                      {translate(guide.severity)}
                     </span>
                   </div>
 
@@ -4795,7 +4796,7 @@ function EmergencyScreen({ role, patientProfile, onNav, onLogout }) {
                           <h5 style={{ color: "#b91c1c", margin: "0 0 8px" }}>{translate("✖ What NOT to do")}</h5>
                           <ul>
                             {guide.donts.map((d, i) => (
-                              <li key={i}>{d}</li>
+                              <li key={i}>{translate(d)}</li>
                             ))}
                           </ul>
                         </div>
@@ -5086,7 +5087,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
       onLogout={onLogout}
       userName={profile?.name || user?.name || t("role.worker")}
       title={t("dashboard.workerTitle")}
-      subtitle={profile?.department ? `${profile.department} · ID: ${profile.employee_id || "Staff"}` : "Manage patient documents, community health records, and AI pipeline outputs."}
+      subtitle={profile?.department ? `${profile.department} · ${translate("ID:")} ${profile.employee_id || translate("Staff")}` : translate("Manage patient documents, community health records, and AI pipeline outputs.")}
     >
       <div className="stat-row">
         <div className="stat">
@@ -5194,7 +5195,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
               <Users size={40} color="var(--ink-faint)" />
               <h4 style={{ margin: "12px 0 4px", fontSize: 16 }}>{t("worker.noPatientsFound")}</h4>
               <p style={{ color: "var(--ink-soft)", fontSize: 13, margin: 0 }}>
-                {searchQuery ? `No results matching "${searchQuery}". Try a different keyword.` : "Click 'Register new patient' to add your first patient."}
+                {searchQuery ? `${translate("No results matching")} "${searchQuery}". ${translate("Try a different keyword.")}` : translate("Click 'Register new patient' to add your first patient.")}
               </p>
             </div>
           ) : viewMode === "grid" ? (
@@ -5263,7 +5264,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
                             </span>
                             {docCount > 0 && (
                               <span className="badge badge--sage">
-                                {docCount} {docCount === 1 ? "Doc Attached" : "Docs Attached"}
+                                {docCount} {docCount === 1 ? translate("Doc Attached") : translate("Docs Attached")}
                               </span>
                             )}
                           </div>
@@ -5495,10 +5496,10 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
             {[
-              { file: "0_raw_extracted_text.txt", label: "0. Raw OCR Text" },
-              { file: "2_narrative.txt", label: "2. Medication Narrative" },
-              { file: "3_simplified_explanation.txt", label: "3. Simplified Explanation" },
-              { file: "4_translated_explanation.txt", label: "4. Translated Text" },
+              { file: "0_raw_extracted_text.txt", label: translate("0. Raw OCR Text") },
+              { file: "2_narrative.txt", label: translate("2. Medication Narrative") },
+              { file: "3_simplified_explanation.txt", label: translate("3. Simplified Explanation") },
+              { file: "4_translated_explanation.txt", label: translate("4. Translated Text") },
             ].map((stg) => (
               <button
                 key={stg.file}
@@ -5526,7 +5527,7 @@ function WorkerDashboard({ user, profile, onNav, onOpenPatient, onOpenDocument, 
               <div style={{ padding: 20, textAlign: "center" }}><span className="spinner" /></div>
             ) : (
               <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 13, color: "var(--ink)", fontFamily: "monospace", maxHeight: 350, overflowY: "auto" }}>
-                {stageContent || "No content found for this stage."}
+                {stageContent || translate("No content found for this stage.")}
               </pre>
             )}
           </div>
@@ -5729,7 +5730,7 @@ function WorkerPatientDetail({ patient, onNav, onBack, onUploadFor, onOpenDocume
 
       <div className="section">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <h2 style={{ margin: 0 }}>{translate("Documents for")} {patientData.name ? patientData.name.split(" ")[0] : "this patient"} {translate("(")}{documents.length}{translate(")")}</h2>
+          <h2 style={{ margin: 0 }}>{translate("Documents for")} {patientData.name ? patientData.name.split(" ")[0] : translate("this patient")} {translate("(")}{documents.length}{translate(")")}</h2>
           <button className="btn btn--primary" onClick={() => onUploadFor(patientData)}>
             <UploadCloud size={15} /> {translate("Upload document")}
           </button>
@@ -5858,7 +5859,7 @@ function AdminDashboard({ user, activePanel = "overview", onPanelChange, onNav, 
       onLogout={onLogout}
       userName={adminName}
       title={current.title}
-      subtitle={current.subtitle}
+      subtitle={translate(current.subtitle)}
     >
       {activePanel === "overview" && <AdminOverviewPanel />}
       {activePanel === "users" && <AdminUsersPanel />}
@@ -5964,7 +5965,7 @@ function AdminOverviewPanel() {
             <h3 className="admin-panel__title">
               <Activity size={15} /> {translate("Recent Uploads")}
             </h3>
-            <span className="admin-panel__count">{t("admin.lastTen") || "last 10"}</span>
+            <span className="admin-panel__count">{translate("Last 10")}</span>
           </div>
           {recentUploads.length ? (
             <>
@@ -5973,7 +5974,7 @@ function AdminOverviewPanel() {
                   <li key={doc.id} className="admin-activity-item">
                     <div className="admin-activity-dot admin-activity-dot--doc" />
                     <div className="admin-activity-text">
-                      <strong>{doc.original_filename || "Unnamed file"}</strong>
+                      <strong>{doc.original_filename || translate("Unnamed file")}</strong>
                       {doc.document_type && (
                         <> {translate("·")} <span style={{ color: "var(--ink-soft)", fontSize: 12 }}>{translateDocumentType(doc.document_type)}</span></>
                       )}
@@ -6147,10 +6148,10 @@ function AdminUsersPanel() {
                               className={`admin-action-btn admin-action-btn--sm ${u.is_verified ? "admin-action-btn--danger" : "admin-action-btn--verify"}`}
                               onClick={() => handleToggleVerify(u)}
                               disabled={updating === u.id}
-                              title={u.is_verified ? "Revoke verification" : "Grant verification"}
+                              title={u.is_verified ? translate("Revoke verification") : translate("Grant verification")}
                             >
                               {u.is_verified ? <Ban size={12} /> : <BadgeCheck size={12} />}
-                              {u.is_verified ? t("admin.revokeVerify") : t("admin.grantVerify")}
+                              {u.is_verified ? translate("Revoke verification") : translate("Grant verification")}
                             </button>
                           )}
                           <button
@@ -7300,8 +7301,8 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
             <p style={{ color: "var(--ink-soft)", fontSize: 13, maxWidth: 450, margin: "8px auto 16px" }}>
               {isWorker
                 ? selectedPatient
-                  ? `No reminders scheduled for ${selectedPatient.name} today.`
-                  : "Select a patient above to view their reminders, or select 'All Patients'."
+                  ? `${translate("No reminders scheduled for")} ${selectedPatient.name} ${translate("today.")}`
+                  : translate("Select a patient above to view their reminders, or select 'All Patients'.")
                 : t("reminders.scheduleBtn")}
             </p>
             <button className="btn btn--secondary" onClick={() => {
@@ -7374,7 +7375,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
 
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 16, color: "var(--ink)" }}>{log.medicine_name}</div>
-                      <div style={{ fontSize: 13, color: "var(--ink-soft)", marginTop: 2 }}>{log.dosage || "As prescribed"}</div>
+                      <div style={{ fontSize: 13, color: "var(--ink-soft)", marginTop: 2 }}>{log.dosage || translate("As prescribed")}</div>
                     </div>
                   </div>
 
@@ -7652,17 +7653,53 @@ export default function App() {
     const saved = localStorage.getItem("sehat_saathi_lang") || "hi";
     return SUPPORTED_LANGUAGES.some(({ code }) => code === saved) ? saved : "hi";
   });
+  const [, setTranslationRevision] = useState(0);
+
+  // Sarvam the rendered page as well as the known i18n dictionary. This catches
+  // literal labels, form hints, and text in screens mounted after login.
+  useEffect(() => startSarvamPageTranslator(), []);
+
+  useEffect(() => {
+    const refreshTranslatedUI = () => {
+      const language = localStorage.getItem("sehat_saathi_lang") || "hi";
+      setTranslationRevision((revision) => revision + 1);
+      document.title = translate("Sehat Saathi - Multilingual AI Healthcare Engine", language);
+      document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", translate("Sehat Saathi", language));
+    };
+    window.addEventListener("sehat-saathi-translations-updated", refreshTranslatedUI);
+    return () => window.removeEventListener("sehat-saathi-translations-updated", refreshTranslatedUI);
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = appLanguage;
     document.documentElement.dir = appLanguage === "ur" ? "rtl" : "ltr";
+    window.dispatchEvent(new Event("sehat-saathi-language-changed"));
     document.title = translate("Sehat Saathi - Multilingual AI Healthcare Engine", appLanguage);
     document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", translate("Sehat Saathi", appLanguage));
+
+    // Re-render after translations are added to the in-memory dictionary.
+    let active = true;
+    loadSarvamUITranslations(appLanguage)
+      .then(() => {
+        if (active) {
+          setTranslationRevision((revision) => revision + 1);
+          document.title = translate("Sehat Saathi - Multilingual AI Healthcare Engine", appLanguage);
+          document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", translate("Sehat Saathi", appLanguage));
+        }
+      })
+      .catch(err => console.warn("Sarvam UI translation err:", err));
+    return () => { active = false; };
   }, [appLanguage]);
 
-  function changeAppLanguage(newLang) {
+  async function changeAppLanguage(newLang) {
     setAppLanguageState(newLang);
     localStorage.setItem("sehat_saathi_lang", newLang);
+    try {
+      await loadSarvamUITranslations(newLang);
+      setTranslationRevision((revision) => revision + 1);
+    } catch (e) {
+      console.warn("Sarvam UI translation update warning", e);
+    }
   }
 
   // Restore authenticated session on mount
