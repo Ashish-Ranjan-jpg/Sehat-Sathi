@@ -18,8 +18,14 @@ export const SUPPORTED_LANGUAGES = [
 ];
 
 import { hindiInline } from "./i18n_hardcoded.js";
-import { API_BASE } from "./api.js";
 import { appUiStrings } from "./i18n_app_strings.js";
+import hiLocale from "./locales/hi.json";
+import bnLocale from "./locales/bn.json";
+import taLocale from "./locales/ta.json";
+import teLocale from "./locales/te.json";
+import mrLocale from "./locales/mr.json";
+import guLocale from "./locales/gu.json";
+import knLocale from "./locales/kn.json";
 
 export const translations = {
   en: {
@@ -1147,12 +1153,17 @@ export const translations = {
   },
 };
 
-// Register literal component copy so it can be translated through Sarvam too.
+// Register literal component copy for local dictionary lookup.
 for (const text of appUiStrings) translations.en[text] = text;
 
 // English keeps untranslated interface strings readable instead of mixing
 // Hindi into a different selected language.
 Object.assign(translations.hi, hindiInline);
+
+// Load every maintained UI dictionary locally so language changes never wait on a translation service.
+for (const [code, dictionary] of Object.entries({ hi: hiLocale, bn: bnLocale, ta: taLocale, te: teLocale, mr: mrLocale, gu: guLocale, kn: knLocale })) {
+  translations[code] = { ...(translations[code] || {}), ...dictionary };
+}
 
 const englishKeyByValue = Object.fromEntries(
   Object.entries(translations.en).map(([key, value]) => [value, key])
@@ -1173,162 +1184,4 @@ export function t(key, lang = globalThis.localStorage?.getItem("sehat_saathi_lan
   }
   if (translations.en[dictionaryKey] !== undefined) return localizeBrand(translations.en[dictionaryKey]);
   return localizeBrand(key);
-}
-
-// Load cached Sarvam translations from localStorage on initialization if available
-if (typeof window !== "undefined" && window.localStorage) {
-  try {
-    for (const langObj of SUPPORTED_LANGUAGES) {
-      const code = langObj.code;
-      if (code !== "en") {
-        const cached = localStorage.getItem(`sehat_saathi_sarvam_ui_v5_${code}`);
-        if (cached) {
-          translations[code] = { ...(translations[code] || {}), ...JSON.parse(cached) };
-        }
-      }
-    }
-  } catch (e) {
-    console.warn("[i18n] Error loading cached Sarvam UI translations", e);
-  }
-}
-
-const fetchedSarvamLangs = new Set();
-const sarvamRetryAfter = new Map();
-const scheduledSarvamRetries = new Set();
-let activeDictionaryLoads = 0;
-
-function reportDictionaryLoad(active) {
-  if (typeof window === "undefined") return;
-  activeDictionaryLoads = Math.max(0, activeDictionaryLoads + (active ? 1 : -1));
-  window.dispatchEvent(new CustomEvent("sehat-saathi-translation-progress", {
-    detail: { active: activeDictionaryLoads > 0 },
-  }));
-}
-
-function scheduleSarvamRetry(targetLang) {
-  if (typeof window === "undefined" || scheduledSarvamRetries.has(targetLang)) return;
-  scheduledSarvamRetries.add(targetLang);
-  window.setTimeout(async () => {
-    scheduledSarvamRetries.delete(targetLang);
-    if (localStorage.getItem("sehat_saathi_lang") !== targetLang) return;
-    sarvamRetryAfter.delete(targetLang);
-    await loadSarvamUITranslations(targetLang);
-    window.dispatchEvent(new Event("sehat-saathi-translations-updated"));
-  }, 62_000);
-}
-
-/**
- * Dynamically fetch & update UI component translations for targetLang using Sarvam AI via backend API /api/translate-ui
- */
-export async function loadSarvamUITranslations(targetLang) {
-  if (!targetLang || targetLang === "en") return translations.en;
-  if ((sarvamRetryAfter.get(targetLang) || 0) > Date.now()) return translations[targetLang] || translations.en;
-  if (fetchedSarvamLangs.has(targetLang)) return translations[targetLang];
-  if (["hi", "bn", "ta"].includes(targetLang)) {
-    const localeModule = targetLang === "hi"
-      ? await import("./locales/hi.json")
-      : targetLang === "bn"
-        ? await import("./locales/bn.json")
-        : await import("./locales/ta.json");
-    if (targetLang === "hi") {
-      for (const [key, value] of Object.entries(localeModule.default)) {
-        if (typeof translations.hi[key] !== "string") translations.hi[key] = value;
-      }
-    } else {
-      Object.assign(translations[targetLang], localeModule.default);
-    }
-    if (Object.keys(translations.en).every((key) => typeof translations[targetLang]?.[key] === "string")) {
-      fetchedSarvamLangs.add(targetLang);
-      return translations[targetLang];
-    }
-  }
-
-  const dictionaryCacheKey = `sehat_saathi_sarvam_ui_v5_${targetLang}`;
-  try {
-    const cachedStr = typeof window !== "undefined" ? localStorage.getItem(dictionaryCacheKey) : null;
-    if (cachedStr) {
-      const cached = JSON.parse(cachedStr);
-      if (cached && Object.keys(translations.en).every((key) => typeof cached[key] === "string")) {
-        translations[targetLang] = { ...(translations[targetLang] || {}), ...cached };
-        fetchedSarvamLangs.add(targetLang);
-        return translations[targetLang];
-      }
-    }
-  } catch (err) {
-    console.warn("Invalid cached translation dictionary", err);
-  }
-
-  const baseDict = translations.en || {};
-  let pageCache = {};
-  try {
-    const savedPageCache = typeof window !== "undefined"
-      ? localStorage.getItem(`sehat_saathi_sarvam_page_v2_${targetLang}`)
-      : null;
-    if (savedPageCache) pageCache = JSON.parse(savedPageCache);
-  } catch (error) {
-    console.warn("Invalid saved page translation cache", error);
-  }
-
-  const cachedDictionaryEntries = {};
-  const missingDictionaryEntries = {};
-  for (const [key, sourceText] of Object.entries(baseDict)) {
-    if (typeof pageCache[sourceText] === "string") cachedDictionaryEntries[key] = pageCache[sourceText];
-    else missingDictionaryEntries[key] = sourceText;
-  }
-
-  if (Object.keys(missingDictionaryEntries).length === 0) {
-    translations[targetLang] = { ...(translations[targetLang] || {}), ...cachedDictionaryEntries };
-    fetchedSarvamLangs.add(targetLang);
-    try { localStorage.setItem(dictionaryCacheKey, JSON.stringify(translations[targetLang])); }
-    catch (error) { console.warn("Could not persist completed translation dictionary", error); }
-    return translations[targetLang];
-  }
-
-  reportDictionaryLoad(true);
-  try {
-    const apiBase = API_BASE.replace(/\/+$/, "");
-    const res = await fetch(`${apiBase}/api/translate-ui`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ target_lang: targetLang, texts: missingDictionaryEntries }),
-    });
-    if (!res.ok) throw new Error(`Translation API returned HTTP ${res.status}`);
-
-    const data = await res.json();
-    if (!["success", "partial"].includes(data.status) || !data.translations) {
-      throw new Error(data.message || "Translation API did not return translations");
-    }
-
-    translations[targetLang] = {
-      ...(translations[targetLang] || {}),
-      ...cachedDictionaryEntries,
-      ...data.translations,
-    };
-    if (data.status === "success") {
-      fetchedSarvamLangs.add(targetLang);
-      sarvamRetryAfter.delete(targetLang);
-      try { localStorage.setItem(dictionaryCacheKey, JSON.stringify(translations[targetLang])); }
-      catch (error) { console.warn("Could not persist completed translation dictionary", error); }
-    } else {
-      sarvamRetryAfter.set(targetLang, Date.now() + 62_000);
-      scheduleSarvamRetry(targetLang);
-      console.warn(`[i18n] Sarvam returned a partial ${targetLang} dictionary; retrying after a short cooldown.`);
-    }
-    return translations[targetLang];
-  } catch (error) {
-    sarvamRetryAfter.set(targetLang, Date.now() + 62_000);
-    scheduleSarvamRetry(targetLang);
-    console.error("[i18n] Failed to fetch Sarvam UI translations:", error);
-    return translations[targetLang] || translations.en;
-  } finally {
-    reportDictionaryLoad(false);
-  }
-}
-
-
-/**
- * Backward-compatible alias for UI translation loading
- */
-export async function applyBrowserTranslation(targetLang) {
-  return await loadSarvamUITranslations(targetLang);
 }
