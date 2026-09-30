@@ -7449,6 +7449,12 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
         {/* Active Schedules Section */}
         <div style={{ marginTop: 32 }}>
           <h3 style={{ fontSize: 18, color: "var(--ink)", marginBottom: 14 }}>{t("reminders.activeReminders")}</h3>
+          <Pagination
+            currentPage={reminderPage}
+            totalItems={reminders.length}
+            pageSize={5}
+            onPageChange={setReminderPage}
+          />
 
           {reminders.length === 0 ? (
             <p style={{ color: "var(--ink-soft)", fontSize: 13 }}>{t("reminders.noActive")}</p>
