@@ -6922,6 +6922,7 @@ function HealthDatabaseScreen({ role, profile, onNav, onLogout }) {
 function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, clearPrefilledReminder }) {
   const { t } = useAppLanguage();
   const [reminders, setReminders] = useState([]);
+  const { currentPage: reminderPage, setCurrentPage: setReminderPage, paginatedItems: paginatedReminders } = usePagination(reminders, 5);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -7428,7 +7429,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
             <p style={{ color: "var(--ink-soft)", fontSize: 13 }}>{t("reminders.noActive")}</p>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
-              {reminders.map((rem) => (
+              {paginatedReminders.map((rem) => (
                 <div key={rem.id} style={{ background: "var(--panel)", padding: 20, borderRadius: 12, border: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
@@ -7473,12 +7474,19 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
               ))}
             </div>
           )}
+          <Pagination
+            currentPage={reminderPage}
+            totalItems={reminders.length}
+            pageSize={5}
+            onPageChange={setReminderPage}
+          />
         </div>
 
         {/* Modal: Schedule New Reminder */}
         {showModal && (
-          <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 }}>
-            <div style={{ background: "var(--panel)", borderRadius: 16, width: "100%", maxWidth: 520, padding: 24, boxShadow: "0 20px 40px rgba(0,0,0,0.2)", maxHeight: "90vh", overflowY: "auto" }}>
+          createPortal(
+          <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16, overflowY: "auto" }}>
+            <div style={{ background: "var(--panel)", borderRadius: 16, width: "100%", maxWidth: 520, padding: 24, boxSizing: "border-box", boxShadow: "0 20px 40px rgba(0,0,0,0.2)", maxHeight: "calc(100vh - 32px)", maxHeight: "calc(100dvh - 32px)", overflowY: "auto", margin: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <h3 style={{ margin: 0, fontSize: 18, color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
                   <AlarmClock size={20} color="var(--teal)" /> {t("reminders.scheduleBtn")}
@@ -7628,6 +7636,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
               </form>
             </div>
           </div>
+          , document.body)
         )}
       </div>
     </Shell>

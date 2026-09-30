@@ -9,8 +9,9 @@ const sourcePath = path.join(frontendDir, "src", "i18n.js");
 const stringsPath = path.join(frontendDir, "src", "i18n_app_strings.js");
 const outputDir = path.join(frontendDir, "src", "locales");
 const envPath = path.join(rootDir, ".env");
-const targets = ["bn", "ta", "te", "mr", "gu", "kn", "pa", "ur"];
+const targets = ["hi", "bn", "ta", "te", "mr", "gu", "kn", "pa", "ur"];
 const languageCodes = {
+  hi: "hi-IN",
   bn: "bn-IN", ta: "ta-IN", te: "te-IN", mr: "mr-IN",
   gu: "gu-IN", kn: "kn-IN", pa: "pa-IN", ur: "ur-IN",
 };
