@@ -6,6 +6,7 @@ import traceback
 from typing import Optional, Literal
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.security import OAuth2PasswordRequestForm
@@ -114,6 +115,12 @@ def register(payload: RegisterRequest):
     if len(payload.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
 
+    # Reject duplicates before creating a linked profile or spending time on
+    # password hashing. create_user still enforces uniqueness for concurrent
+    # registrations that pass this preflight check together.
+    if auth_store.get_user_by_email(payload.email):
+        raise HTTPException(status_code=400, detail=f"Email already registered: {payload.email}")
+
     patient_id = None
     worker_id = None
     is_verified = False
@@ -215,8 +222,15 @@ async def login(request: Request):
     if not username or not password:
         raise HTTPException(status_code=400, detail="Missing email/username or password")
 
-    user = auth_store.get_user_by_email(username)
-    if not user or not auth.verify_password(password, user["password_hash"], user["password_salt"]):
+    # PBKDF2 and the database driver are synchronous. Keep them off the ASGI
+    # event loop so one login cannot stall unrelated requests.
+    user = await run_in_threadpool(auth_store.get_user_by_email, username)
+    valid_password = False
+    if user:
+        valid_password = await run_in_threadpool(
+            auth.verify_password, password, user["password_hash"], user["password_salt"]
+        )
+    if not user or not valid_password:
         raise HTTPException(
             status_code=401,
             detail="Incorrect email or password",
@@ -225,9 +239,9 @@ async def login(request: Request):
 
     profile = None
     if user.get("role") == "patient" and user.get("patient_id"):
-        profile = document_store.get_patient(user["patient_id"])
+        profile = await run_in_threadpool(document_store.get_patient, user["patient_id"])
     elif user.get("role") == "healthcare_worker" and user.get("worker_id"):
-        profile = document_store.get_healthcare_worker(user["worker_id"])
+        profile = await run_in_threadpool(document_store.get_healthcare_worker, user["worker_id"])
 
     token = auth.create_access_token(user["id"])
     return {
