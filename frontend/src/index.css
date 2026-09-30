@@ -1711,6 +1711,7 @@
           width: 280px;
           max-width: 84vw;
           height: 100vh;
+          height: 100dvh;
           background: var(--paper-deep);
           z-index: 1050;
           display: flex;
@@ -1721,6 +1722,7 @@
           transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
           box-shadow: none;
           overflow-y: auto;
+          overscroll-behavior: contain;
           -webkit-overflow-scrolling: touch;
         }
 
@@ -6361,6 +6363,7 @@ img, video, iframe, canvas, svg {
   .topbar__titles h1 {
     font-size: 16px;
   }
+}
 /* ─────────────────────────────────────────────────────────────
    GLOBAL RESPONSIVE MEDIA QUERIES (320px, 375px, 425px, 768px+)
 ───────────────────────────────────────────────────────────── */
@@ -6547,6 +6550,7 @@ img, video, iframe, canvas, svg {
   }
 }
 
+@media (max-width: 320px) {
   .landing-hero__title {
     font-size: 20px !important;
   }
@@ -7176,4 +7180,88 @@ img, video, iframe, canvas, svg {
 .chatbot-icon-btn:hover, .chatbot-icon-btn.active {
   background: var(--paper-deep);
   color: var(--teal);
+}
+
+/* Responsive layout guardrails. Keep these last so all page-specific rules
+   above resolve to the same behavior at each viewport size. */
+@media (max-width: 900px) {
+  .auth-panel { padding: 32px; }
+  .auth-form-side { padding: 28px; }
+}
+
+@media (max-width: 768px) {
+  .auth-screen { flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+  .auth-panel {
+    position: relative;
+    top: auto;
+    width: 100%;
+    flex: none;
+    height: auto;
+    min-height: 132px;
+    padding: 22px 24px;
+    justify-content: center;
+  }
+  .auth-panel__copy { display: none; }
+  .auth-form-side { flex: 1 0 auto; align-items: flex-start; padding: 24px; }
+  .auth-card { max-width: 480px; margin: 0 auto; }
+  .landing-nav { gap: 12px; padding: 12px 18px !important; }
+  .landing-nav__links { display: none; }
+  .landing-nav__actions { gap: 8px !important; }
+  .content, .main { min-width: 0; }
+  .app-shell { min-height: 100vh; min-height: 100dvh; }
+  .sidebar { height: 100vh; height: 100dvh; }
+  .modal-backdrop, .modal-overlay {
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    align-items: center;
+  }
+  .modal-card { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; }
+  .chatbot-floating-launcher { right: 16px; bottom: max(18px, env(safe-area-inset-bottom)); }
+  .chatbot-floating-window {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: calc(100vw - 24px);
+    max-width: 460px;
+    height: min(640px, calc(100vh - 24px));
+    height: min(640px, calc(100dvh - 24px));
+    padding: 12px;
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-nav { padding: 10px 12px !important; }
+  .landing-nav .ss-wordmark { font-size: 17px; }
+  .landing-nav__actions { gap: 6px !important; }
+  .landing-nav__actions .btn { padding: 7px 9px !important; font-size: 12px !important; }
+  .landing-nav__actions .lang-selector-wrap { max-width: 76px; padding: 3px 5px; }
+  .landing-nav__actions .lang-select-dropdown { max-width: 52px; font-size: 11px; }
+  .landing-hero { padding: 28px 16px 24px !important; }
+  .landing-section { padding: 32px 16px !important; }
+  .auth-panel { min-height: 112px; padding: 18px 20px; }
+  .auth-form-side { padding: 20px 16px; }
+  .field-row { flex-direction: column; gap: 0; }
+  .modal-backdrop, .modal-overlay { padding-left: 8px; padding-right: 8px; }
+  .chatbot-floating-window {
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: calc(100vw - 16px);
+    height: calc(100vh - 16px);
+    height: calc(100dvh - 16px);
+    padding: 10px;
+    border-radius: 14px;
+  }
+  .chatbot-fab-btn { padding: 7px; gap: 6px; }
+  .chatbot-fab-icon { width: 40px; height: 40px; }
+}
+
+@media (max-width: 360px) {
+  .mobile-topbar { padding-left: 8px; padding-right: 8px; }
+  .mobile-topbar .ss-wordmark { font-size: 13px !important; }
+  .mobile-topbar__actions { gap: 3px; }
+  .landing-nav__actions .btn { padding: 6px 7px !important; font-size: 11px !important; }
+  .landing-nav__actions .lang-selector-wrap { max-width: 68px; }
+  .auth-form-side { padding: 18px 12px; }
+  .auth-card h1 { font-size: 21px; }
+  .content { padding-left: 10px; padding-right: 10px; }
 }

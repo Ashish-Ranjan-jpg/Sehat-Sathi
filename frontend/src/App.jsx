@@ -1511,6 +1511,36 @@ function Shell({ role, active, onNav, onLogout, title, subtitle, children, userN
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { t } = useAppLanguage();
 
+  useEffect(() => {
+    if (!mobileMenuOpen || !window.matchMedia("(max-width: 768px)").matches) return undefined;
+
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const html = document.documentElement;
+    const previousBodyStyles = {
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    };
+    const previousHtmlOverflow = html.style.overflow;
+
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+
+    return () => {
+      body.style.position = previousBodyStyles.position;
+      body.style.top = previousBodyStyles.top;
+      body.style.width = previousBodyStyles.width;
+      body.style.overflow = previousBodyStyles.overflow;
+      html.style.overflow = previousHtmlOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [mobileMenuOpen]);
+
   const patientNav = [
     { key: "dashboard", label: t("nav.documents"), icon: Home },
     { key: "reminders", label: t("nav.reminders"), icon: Bell },
@@ -7486,7 +7516,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
         {showModal && (
           createPortal(
           <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16, overflowY: "auto" }}>
-            <div style={{ background: "var(--panel)", borderRadius: 16, width: "100%", maxWidth: 520, padding: 24, boxSizing: "border-box", boxShadow: "0 20px 40px rgba(0,0,0,0.2)", maxHeight: "calc(100vh - 32px)", maxHeight: "calc(100dvh - 32px)", overflowY: "auto", margin: "auto" }}>
+            <div style={{ background: "var(--panel)", borderRadius: 16, width: "100%", maxWidth: 520, padding: 24, boxSizing: "border-box", boxShadow: "0 20px 40px rgba(0,0,0,0.2)", maxHeight: "calc(100dvh - 32px)", overflowY: "auto", margin: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <h3 style={{ margin: 0, fontSize: 18, color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
                   <AlarmClock size={20} color="var(--teal)" /> {t("reminders.scheduleBtn")}
