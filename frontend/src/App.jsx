@@ -7510,7 +7510,7 @@ function RemindersScreen({ role, profile, onNav, onLogout, prefilledReminder, cl
         {/* Modal: Schedule New Reminder */}
         {showModal && (
           createPortal(
-          <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16, overflowY: "auto" }}>
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 999, padding: 16, overflowY: "auto", boxSizing: "border-box", height: "100vh", height: "100dvh" }}>
             <div style={{ background: "var(--panel)", borderRadius: 16, width: "100%", maxWidth: 520, padding: 24, boxSizing: "border-box", boxShadow: "0 20px 40px rgba(0,0,0,0.2)", maxHeight: "calc(100dvh - 32px)", overflowY: "auto", margin: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <h3 style={{ margin: 0, fontSize: 18, color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
